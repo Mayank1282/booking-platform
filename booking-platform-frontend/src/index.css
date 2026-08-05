@@ -1,0 +1,283 @@
+@import 'tailwindcss';
+@import 'leaflet/dist/leaflet.css';
+
+/*
+  ============================================================================
+  Slotwise — "Warm Editorial Marketplace"
+  ----------------------------------------------------------------------------
+  A deliberate break from the cool indigo SaaS look of the earlier portfolio
+  projects. The reference feel is a premium hospitality magazine: warm paper
+  tones, editorial serif headlines, monospace for anything numeric, hairline
+  borders instead of drop shadows, and bento-grid composition.
+
+  Rules of the system:
+    - No blue or indigo anywhere. Terracotta leads, sage and gold support.
+    - Borders do the structural work. Shadows are soft and rare.
+    - Serif for display, sans for reading, mono for data.
+    - Mixed radii: large soft surfaces holding sharp inner elements.
+  ============================================================================
+*/
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* --- Warm palette (light) ------------------------------------------- */
+  --color-canvas: #faf7f2;
+  --color-surface: #ffffff;
+  --color-surface-sunk: #f4efe7;
+  --color-ink: #1c1917;
+  --color-ink-soft: #44403c;
+  --color-muted: #78716c;
+  --color-line: #e7e0d8;
+  --color-line-strong: #d6ccc0;
+
+  --color-accent: #c2410c;
+  --color-accent-hover: #9a3412;
+  --color-accent-soft: #fdebd8;
+  --color-accent-ink: #7c2d12;
+
+  --color-sage: #4d7c6f;
+  --color-sage-soft: #e3efeb;
+  --color-gold: #b45309;
+  --color-gold-soft: #fdf1dc;
+  --color-rose: #9f1239;
+  --color-rose-soft: #fbe6ec;
+
+  /* --- Typography ------------------------------------------------------ */
+  --font-display: 'Fraunces', 'Georgia', serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  /* --- Shape ------------------------------------------------------------ */
+  --radius-card: 1rem;
+  --radius-inner: 0.375rem;
+
+  /* Soft, warm-tinted elevation — never a grey drop shadow. */
+  --shadow-lift: 0 1px 2px rgb(28 25 23 / 0.04), 0 8px 24px -12px rgb(28 25 23 / 0.12);
+  --shadow-pop: 0 2px 4px rgb(28 25 23 / 0.06), 0 16px 40px -16px rgb(28 25 23 / 0.2);
+}
+
+/* --- Warm dark mode: espresso, never blue-black ------------------------ */
+.dark {
+  --color-canvas: #1a1614;
+  --color-surface: #241e1b;
+  --color-surface-sunk: #16120f;
+  --color-ink: #f5f0ea;
+  --color-ink-soft: #d6cec5;
+  --color-muted: #a8a29e;
+  --color-line: #3a322d;
+  --color-line-strong: #4d423b;
+
+  --color-accent: #ea6a2c;
+  --color-accent-hover: #f4834b;
+  --color-accent-soft: #3a241a;
+  --color-accent-ink: #fbc9a5;
+
+  --color-sage: #6b9b8b;
+  --color-sage-soft: #22322d;
+  --color-gold: #d9a441;
+  --color-gold-soft: #33280f;
+  --color-rose: #f0637f;
+  --color-rose-soft: #3a1a23;
+
+  --shadow-lift: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+  --shadow-pop: 0 2px 4px rgb(0 0 0 / 0.4), 0 16px 40px -16px rgb(0 0 0 / 0.7);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    /* No layout should ever push the page sideways. */
+    overflow-x: hidden;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  /* Visible, on-brand focus ring everywhere. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background: var(--color-accent-soft);
+    color: var(--color-accent-ink);
+  }
+
+  /* Slim, warm scrollbars. */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-line-strong);
+    border-radius: 999px;
+    border: 3px solid var(--color-canvas);
+  }
+}
+
+@layer components {
+  /*
+    The editorial eyebrow: small uppercase mono label that sits above serif
+    headings. Used throughout to set the magazine tone.
+  */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  /* Anything numeric — prices, times, codes, stat values. */
+  .tabular {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+    Bento grid. Tiles declare their own span, so dashboards read as a composed
+    layout rather than a uniform card wall. Collapses to one column on mobile.
+  */
+  .bento {
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 0.875rem;
+  }
+
+  .bento-2,
+  .bento-4 {
+    grid-column: span 1;
+  }
+
+  @media (min-width: 640px) {
+    .bento {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+    }
+    .bento-2,
+    .bento-4 {
+      grid-column: span 2;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .bento {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .bento-2 {
+      grid-column: span 2;
+    }
+    .bento-4 {
+      grid-column: span 4;
+    }
+  }
+
+  /* Faint paper grain over the hero, so large warm areas are not flat. */
+  .grain::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.4;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.28'/%3E%3C/svg%3E");
+  }
+}
+
+@layer utilities {
+  /* Wide content (tables, slot rows) scrolls in its own rail, never the page. */
+  .scroll-rail {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .animate-rise {
+    animation: rise 0.24s ease-out both;
+  }
+}
+
+/* --- Leaflet, restyled to the warm palette ----------------------------- */
+.leaflet-container {
+  font-family: var(--font-sans);
+  background: var(--color-surface-sunk);
+  z-index: 0;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border-radius: var(--radius-inner);
+  box-shadow: var(--shadow-pop);
+}
+
+.leaflet-popup-content {
+  margin: 0.75rem 0.875rem;
+  font-size: 0.875rem;
+}
+
+.leaflet-bar a,
+.leaflet-control-attribution {
+  background: var(--color-surface);
+  color: var(--color-ink-soft);
+  border-color: var(--color-line);
+}
+
+.leaflet-bar a:hover {
+  background: var(--color-surface-sunk);
+}
+
+/* Muting the tiles in dark mode keeps the map from glowing white. */
+.dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9) saturate(0.7);
+}

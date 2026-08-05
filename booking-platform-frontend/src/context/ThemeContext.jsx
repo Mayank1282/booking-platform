@@ -1,0 +1,51 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+
+const ThemeContext = createContext(null)
+const STORAGE_KEY = 'slotwise-theme'
+
+/**
+ * The initial value is read synchronously so React's first render already
+ * agrees with the class the inline script in index.html applied — no flash,
+ * no mismatch.
+ */
+const readInitialTheme = () => {
+  const stored = localStorage.getItem(STORAGE_KEY)
+  if (stored === 'dark' || stored === 'light') return stored
+
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
+export function ThemeProvider({ children }) {
+  const [theme, setTheme] = useState(readInitialTheme)
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+    document.documentElement.style.colorScheme = theme
+    localStorage.setItem(STORAGE_KEY, theme)
+  }, [theme])
+
+  // Follow the OS only while the user has not made an explicit choice.
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+
+    const onChange = (event) => {
+      if (!localStorage.getItem(STORAGE_KEY)) setTheme(event.matches ? 'dark' : 'light')
+    }
+
+    media.addEventListener('change', onChange)
+    return () => media.removeEventListener('change', onChange)
+  }, [])
+
+  const toggle = useCallback(() => setTheme((t) => (t === 'dark' ? 'light' : 'dark')), [])
+
+  const value = useMemo(() => ({ theme, setTheme, toggle, isDark: theme === 'dark' }), [theme, toggle])
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+}
+
+export function useTheme() {
+  const context = useContext(ThemeContext)
+  if (!context) throw new Error('useTheme must be used inside a ThemeProvider')
+
+  return context
+}

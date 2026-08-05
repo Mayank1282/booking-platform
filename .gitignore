@@ -1,0 +1,30 @@
+# Root-level ignores. Each app also has its own .gitignore.
+
+# Never commit real credentials — .env.example files are the templates.
+.env
+**/.env
+!**/.env.example
+
+# Dependencies and build output
+node_modules/
+**/node_modules/
+**/vendor/
+**/dist/
+
+# Local SQLite database (rebuilt from migrations + seeders)
+**/database/*.sqlite
+**/database/*.sqlite-journal
+
+# Laravel runtime
+**/storage/logs/*.log
+**/storage/framework/cache/data/*
+**/storage/framework/sessions/*
+**/storage/framework/views/*
+**/public/storage
+
+# Editors and OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
