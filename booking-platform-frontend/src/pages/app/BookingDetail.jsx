@@ -23,6 +23,7 @@ import { Textarea } from '@/components/ui/Field'
 import { Avatar, Rating } from '@/components/ui/Misc'
 import { ErrorState, LoadingState } from '@/components/ui/States'
 import PaymentModal from '@/components/booking/PaymentModal'
+import HoldNotice from '@/components/booking/HoldNotice'
 import ServiceMap from '@/components/map/ServiceMap'
 import { dateLong, dateTime, duration, money, time } from '@/lib/format'
 
@@ -146,13 +147,16 @@ export default function BookingDetail() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="eyebrow mb-2">{booking.code}</p>
-            <h1 className="text-3xl font-semibold text-ink sm:text-4xl">{booking.service?.title}</h1>
+            <h1 className="text-3xl text-ink sm:text-4xl">{booking.service?.title}</h1>
             <p className="tabular mt-3 text-sm text-muted">
               {dateLong(booking.starts_at)} · {time(booking.starts_at)}–{time(booking.ends_at)}
             </p>
           </div>
           <Badge tone={bookingTone[booking.status]}>{booking.status_label}</Badge>
         </div>
+
+        {/* An unpaid booking is only a hold — say so, with the countdown. */}
+        <HoldNotice booking={booking} />
 
         {/* --- Actions --------------------------------------------------- */}
         <div className="flex flex-wrap gap-2">
@@ -162,7 +166,9 @@ export default function BookingDetail() {
             </Button>
           )}
 
-          {isProvider && booking.status === 'pending' && (
+          {/* Only ever offered once the client has actually paid — confirming
+              an unpaid hold would create a booking nobody paid for. */}
+          {isProvider && booking.status === 'pending' && booking.is_paid && (
             <Button
               icon={BadgeCheck}
               loading={busy === 'confirm'}
@@ -188,7 +194,7 @@ export default function BookingDetail() {
             </Button>
           )}
 
-          {isActive && (
+          {isActive && !(isProvider && booking.is_paid) && (
             <Button variant="danger" icon={Ban} onClick={() => setCancelOpen(true)}>
               Cancel booking
             </Button>
@@ -223,10 +229,24 @@ export default function BookingDetail() {
                 </div>
               )}
 
-              {booking.cancellation_reason && (
+              {booking.cancelled_at && (
                 <div className="border-t border-line bg-rose-soft px-5 py-4">
-                  <p className="eyebrow mb-2 text-rose">Cancellation reason</p>
-                  <p className="text-sm text-rose">{booking.cancellation_reason}</p>
+                  <p className="eyebrow mb-2 text-rose">
+                    {booking.cancelled_by_role === 'provider'
+                      ? isProvider
+                        ? 'You cancelled this booking'
+                        : 'The provider cancelled this booking'
+                      : booking.cancelled_by_role === 'client'
+                        ? isProvider
+                          ? 'The client cancelled this booking'
+                          : 'You cancelled this booking'
+                        : 'Cancelled by an administrator'}
+                  </p>
+                  {booking.cancellation_reason ? (
+                    <p className="text-sm text-rose">{booking.cancellation_reason}</p>
+                  ) : (
+                    <p className="text-sm text-rose/80">No reason was given.</p>
+                  )}
                 </div>
               )}
             </Card>
@@ -427,10 +447,16 @@ export default function BookingDetail() {
           </>
         }
       >
+        {/* Only promise a refund when there is actually something to refund —
+            otherwise this reads as though money is owed back when none was
+            ever taken. */}
         <p className="text-sm leading-relaxed text-muted">
           {isProvider
-            ? 'The client will be emailed, and any settled payment is refunded automatically.'
-            : 'Free cancellation applies up to 24 hours before the start time. Any payment already taken is refunded.'}
+            ? 'The client will be emailed.'
+            : 'Free cancellation applies up to 24 hours before the start time.'}{' '}
+          {booking.payment?.status === 'succeeded'
+            ? `The ${money(booking.price_amount, booking.currency)} already paid will be refunded to your card.`
+            : 'Nothing has been charged, so there is nothing to refund.'}
         </p>
         <Textarea
           label="Reason (optional)"

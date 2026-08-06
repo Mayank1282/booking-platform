@@ -15,7 +15,7 @@ import {
   startOfMonth,
   startOfWeek,
 } from 'date-fns'
-import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import { isoDay } from '@/lib/format'
 
@@ -71,11 +71,49 @@ export default function AvailabilityCalendar({ serviceSlug, value, onChange, hor
 
   const selected = value ? startOfDay(new Date(value)) : null
 
+  /*
+    Collapsed by default. A full month grid is a lot of surface to open with,
+    and most visitors want a day in the next few — so the panel leads with the
+    chosen date and opens the calendar only when they need another one.
+  */
+  const [open, setOpen] = useState(false)
+
+  if (!open) {
+    return (
+      <div>
+        <p className="eyebrow mb-2">Pick a date</p>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-expanded={false}
+          className="flex min-h-11 w-full items-center justify-between gap-3 rounded-[var(--radius-inner)] border border-line-strong bg-surface px-3.5 text-left transition-colors hover:border-accent"
+        >
+          <span className="flex items-center gap-2.5">
+            <CalendarDays size={16} className="shrink-0 text-muted" aria-hidden="true" />
+            <span className="tabular text-sm text-ink">
+              {value ? format(new Date(value), 'EEE, d MMM yyyy') : 'Choose a date'}
+            </span>
+          </span>
+          <ChevronDown size={15} className="shrink-0 text-muted" aria-hidden="true" />
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
         <p className="eyebrow">Pick a date</p>
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Close the calendar"
+            aria-expanded
+            className="mr-1 flex h-8 items-center rounded-[var(--radius-inner)] px-2 text-xs text-muted transition-colors hover:text-accent"
+          >
+            Done
+          </button>
           <button
             type="button"
             onClick={() => setCursor(addMonths(cursor, -1))}
@@ -129,7 +167,12 @@ export default function AvailabilityCalendar({ serviceSlug, value, onChange, hor
                 key={key}
                 type="button"
                 disabled={disabled}
-                onClick={() => onChange(day)}
+                // Choosing a date collapses the calendar and hands the panel
+                // straight back to the time slots, which is the next decision.
+                onClick={() => {
+                  onChange(day)
+                  setOpen(false)
+                }}
                 aria-label={format(day, 'EEEE d MMMM yyyy')}
                 aria-pressed={Boolean(isSelected)}
                 aria-current={isToday(day) ? 'date' : undefined}

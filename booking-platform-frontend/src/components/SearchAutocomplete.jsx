@@ -219,7 +219,7 @@ export default function SearchAutocomplete({
         <ul
           id={listId}
           role="listbox"
-          className="animate-rise absolute top-full right-0 left-0 z-50 mt-1.5 max-h-80 overflow-y-auto rounded-[var(--radius-card)] border border-line bg-surface py-1 shadow-[var(--shadow-pop)]"
+          className="animate-rise absolute top-full right-0 left-0 z-50 mt-1.5 max-h-80 overflow-y-auto overscroll-contain rounded-[var(--radius-card)] border border-line bg-surface py-1 shadow-[var(--shadow-pop)]"
         >
           {suggestions.map((suggestion, index) => {
             const Icon = icons[suggestion.type] ?? Sparkles

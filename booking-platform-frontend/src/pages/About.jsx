@@ -61,7 +61,7 @@ export default function About() {
         <div className="grid gap-8 rounded-[var(--radius-card)] border border-line bg-surface p-6 sm:p-10 lg:grid-cols-2 lg:gap-16">
           <div>
             <p className="eyebrow">For providers</p>
-            <h2 className="mt-3 text-3xl font-semibold text-ink sm:text-4xl">
+            <h2 className="mt-3 text-3xl text-ink sm:text-4xl">
               Your calendar does the admin.
             </h2>
             <p className="mt-4 text-sm leading-relaxed text-muted">

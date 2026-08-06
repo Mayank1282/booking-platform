@@ -222,12 +222,13 @@ export default function ServiceBrowse() {
   )
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
-      <SectionTitle
-        eyebrow="The directory"
-        title="Find your provider"
-        description="Every listing shows real availability. What you see is what you can book."
-      />
+    <div className="relative">
+      <div className="shell pt-14 pb-20 lg:pt-20 lg:pb-28">
+        <SectionTitle
+          eyebrow="The directory"
+          title="Find your provider"
+          description="Every listing shows real availability. What you see is what you can book."
+        />
 
       {/* Search + sort bar */}
       <div className="mt-8 flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -410,6 +411,7 @@ export default function ServiceBrowse() {
               />
             </>
           )}
+          </div>
         </div>
       </div>
     </div>

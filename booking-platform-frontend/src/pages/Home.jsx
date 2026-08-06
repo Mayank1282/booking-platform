@@ -1,5 +1,5 @@
-import { Suspense, lazy, useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   ArrowRight,
   ArrowUpRight,
@@ -19,6 +19,9 @@ import api from '@/lib/api'
 import Button from '@/components/ui/Button'
 import ServiceCard, { ServiceCardSkeleton } from '@/components/ServiceCard'
 import SearchAutocomplete from '@/components/SearchAutocomplete'
+import Ambient from '@/components/three/Ambient'
+import BookingPreview from '@/components/BookingPreview'
+import CategoryTile from '@/components/CategoryTile'
 import { SectionTitle } from '@/components/ui/Misc'
 
 /*
@@ -39,28 +42,56 @@ const categoryIcons = {
 
 const iconFor = (name) => categoryIcons[name] ?? Sparkles
 
-/*
-  Three.js is by far the heaviest dependency in the app, so the hero scene is
-  split into its own chunk and streamed in after the page is readable. The
-  headline and search never wait on WebGL.
-*/
-const HeroScene = lazy(() => import('@/components/three/HeroScene'))
+const money = (value, currency = 'INR') =>
+  new Intl.NumberFormat('en-IN', { style: 'currency', currency, maximumFractionDigits: 0 }).format(
+    Number(value ?? 0),
+  )
+
+/**
+ * Picks the four bookings shown in the hero carousel.
+ *
+ * With a large enough catalogue the four are drawn at random on each load, so
+ * the home page is not the same every visit. Below that threshold there is no
+ * meaningful variety to shuffle, so the most popular are shown in order.
+ *
+ * These are public listings, not real client bookings — a marketing panel on a
+ * public page must never expose who booked what.
+ */
+function pickHeroBookings(services) {
+  if (!services?.length) return null
+
+  const pool = services.length > 5 ? [...services].sort(() => Math.random() - 0.5) : services
+
+  return pool.slice(0, 4).map((service) => ({
+    title: service.title,
+    provider: service.provider?.provider_profile?.business_name ?? service.provider?.name ?? '',
+    price: money(service.price, service.currency),
+  }))
+}
 
 export default function Home() {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [categories, setCategories] = useState([])
   const [featured, setFeatured] = useState([])
+  const [heroBookings, setHeroBookings] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
 
-    Promise.all([api.get('/categories'), api.get('/services', { params: { sort: 'rating', per_page: 6 } })])
-      .then(([categoryRes, serviceRes]) => {
+    Promise.all([
+      api.get('/categories'),
+      api.get('/services', { params: { sort: 'rating', per_page: 6 } }),
+      // A wider pull purely for the hero carousel, so there is a pool to
+      // choose from rather than always the same top few.
+      api.get('/services', { params: { sort: 'popular', per_page: 24 } }),
+    ])
+      .then(([categoryRes, serviceRes, poolRes]) => {
         if (cancelled) return
         setCategories(categoryRes.data.data.filter((c) => c.services_count > 0))
         setFeatured(serviceRes.data.data)
+        setHeroBookings(pickHeroBookings(poolRes.data.data))
       })
       .catch(() => {
         // The hero and static sections still render — a failed fetch just
@@ -89,20 +120,25 @@ export default function Home() {
           Asymmetric editorial hero: oversized serif headline on the left,
           an offset stat panel on the right. Stacks on mobile.
       ---------------------------------------------------------------- */}
-      <section className="relative overflow-hidden border-b border-line">
-        {/* Layered mesh blooms behind the hero. Large, heavily blurred and
-            low-opacity, so the canvas reads as lit rather than flat. */}
-        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
-          <div className="absolute -top-40 -left-32 size-[34rem] rounded-full bg-accent/18 blur-[110px]" />
-          <div className="absolute -top-24 right-[-10rem] size-[30rem] rounded-full bg-gold/18 blur-[120px]" />
-          <div className="absolute -bottom-56 left-1/3 size-[32rem] rounded-full bg-sage/14 blur-[130px]" />
-        </div>
+      <section className="relative overflow-hidden">
+        {/* Full-bleed 3D background. It has no silhouette and fades to the
+            page colour at every edge, so it behaves like atmosphere rather
+            than an object sitting behind the words. */}
+        {/* A very faint wash tying the framed artwork into the page. The panel
+            carries the visual weight; this only stops the surrounding paper
+            looking cut out. */}
+        <div
+          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(60%_60%_at_78%_28%,var(--color-accent-soft),transparent_70%)] opacity-70"
+          aria-hidden="true"
+        />
 
-        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:grid lg:grid-cols-12 lg:gap-12 lg:px-8 lg:py-24">
+        <div className="shell grid gap-16 pt-20 pb-24 lg:grid-cols-12 lg:gap-12 lg:pt-32 lg:pb-36">
           <div className="lg:col-span-7">
             <p className="eyebrow">Booking marketplace · India</p>
 
-            <h1 className="mt-5 text-[2.5rem] leading-[1.05] font-semibold text-ink sm:text-6xl lg:text-[4.25rem]">
+            {/* Set large and light. The restraint is the point — one italic
+                phrase in the accent is the only colour in the whole block. */}
+            <h1 className="mt-8 text-[3rem] text-ink sm:text-[4.5rem] lg:text-[5.5rem]">
               Book someone
               <br />
               <span className="text-accent italic">genuinely good</span>
@@ -110,12 +146,12 @@ export default function Home() {
               at a time that suits.
             </h1>
 
-            <p className="mt-6 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-              Real availability from real providers — wellness, beauty, fitness, home services and
-              more. Pick a slot, pay securely, and get a confirmation in seconds.
+            <p className="mt-10 max-w-md text-base leading-[1.7] text-muted">
+              Real availability from real providers — wellness, beauty, fitness and home services.
+              Pick a slot, pay securely, and get a confirmation in seconds.
             </p>
 
-            <form onSubmit={handleSearch} className="mt-8 flex max-w-xl flex-col gap-2 sm:flex-row">
+            <form onSubmit={handleSearch} className="mt-10 flex max-w-lg flex-col gap-2 sm:flex-row">
               <SearchAutocomplete
                 value={query}
                 onChange={setQuery}
@@ -128,65 +164,73 @@ export default function Home() {
               </Button>
             </form>
 
-            <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted">
+            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted">
               <span className="inline-flex items-center gap-1.5">
-                <ShieldCheck size={14} className="text-sage" aria-hidden="true" />
+                <ShieldCheck size={13} aria-hidden="true" />
                 Secure payments
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <Star size={14} className="text-gold" aria-hidden="true" />
+                <Star size={13} aria-hidden="true" />
                 Verified reviews
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <Sparkles size={14} className="text-accent" aria-hidden="true" />
+                <Sparkles size={13} aria-hidden="true" />
                 Free cancellation up to 24h
               </span>
             </div>
           </div>
 
-          {/* The 3D dial. It carries the visual weight of the hero, with the
-              proof points sitting on glass beneath it. */}
-          <div className="mt-12 lg:col-span-5 lg:mt-0">
-            <div className="relative">
-              <Suspense
-                fallback={<div className="aspect-square w-full animate-pulse rounded-full bg-accent-soft/40" />}
-              >
-                <HeroScene className="aspect-square w-full [&_canvas]:!touch-pan-y" />
-              </Suspense>
+          {/* The artwork. Framed in its own panel so it reads as an image on
+              the page rather than a shape floating behind the words — and so
+              it can carry real colour without touching the headline. */}
+          <div className="lg:col-span-5">
+            <figure className="relative overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface-sunk shadow-[var(--shadow-pop)]">
+              <div className="relative aspect-[4/5] w-full">
+                {/* Colour field behind, schedule in front — the field gives
+                    the panel depth, the schedule gives it meaning. */}
+                <Ambient
+                  contained
+                  intensity={0.75}
+                  minWidth={0}
+                  className="absolute inset-0"
+                  fallbackClassName="bg-gradient-to-br from-accent-soft via-surface-sunk to-canvas"
+                />
+                {/* The product itself, tilted in 3D and booking as you watch. */}
+                <BookingPreview bookings={heroBookings} className="absolute inset-0 p-4 pb-20" />
 
-              {/* Frosted panel overlapping the lower edge of the scene. */}
-              <figure className="relative -mt-10 rounded-[var(--radius-card)] border border-line/80 bg-surface/70 p-6 shadow-[var(--shadow-lift)] backdrop-blur-xl sm:-mt-14">
-                <blockquote className="font-display text-xl leading-snug font-medium text-ink sm:text-2xl">
-                  “Booked a physio at 9pm on a Sunday. Confirmed before I closed the tab.”
-                </blockquote>
-                <figcaption className="mt-3 text-sm text-muted">— Ananya S., Bengaluru</figcaption>
+                <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-canvas via-canvas/90 to-transparent p-6 pt-16">
+                  <p className="eyebrow">Live availability</p>
+                  <p className="mt-2 font-display text-xl leading-snug text-ink">
+                    Pick a real slot. Confirmed in seconds.
+                  </p>
+                </figcaption>
+              </div>
 
-                <dl className="mt-6 grid grid-cols-3 gap-4 border-t border-line pt-5">
-                  {[
-                    ['2.4k', 'Bookings'],
-                    ['180+', 'Providers'],
-                    ['4.8', 'Avg rating'],
-                  ].map(([value, label]) => (
-                    <div key={label}>
-                      <dt className="sr-only">{label}</dt>
-                      <dd>
-                        <span className="tabular text-xl font-semibold text-ink">{value}</span>
-                        <span className="mt-0.5 block text-[0.6875rem] tracking-wide text-muted uppercase">
-                          {label}
-                        </span>
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </figure>
-            </div>
+              <dl className="grid grid-cols-3 divide-x divide-line border-t border-line bg-surface">
+                {[
+                  ['2.4k', 'Bookings'],
+                  ['180+', 'Providers'],
+                  ['4.8', 'Rating'],
+                ].map(([value, label]) => (
+                  <div key={label} className="px-4 py-4 text-center">
+                    <dt className="sr-only">{label}</dt>
+                    <dd>
+                      <span className="tabular block text-xl text-ink">{value}</span>
+                      <span className="mt-1 block text-[0.625rem] tracking-[0.18em] text-muted uppercase">
+                        {label}
+                      </span>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </figure>
           </div>
         </div>
       </section>
 
       {/* --- Categories --------------------------------------------------- */}
-      <section className="border-b border-line bg-surface">
-        <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+      <section className="rule">
+        <div className="shell section">
           <SectionTitle
             eyebrow="Browse by category"
             title="What do you need done?"
@@ -197,50 +241,26 @@ export default function Home() {
             }
           />
 
-          {/* Compact tiles, six across on desktop — dense enough that a short
-              category list still fills its row instead of orphaning one card. */}
-          <div className="mt-8 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+          {/* Six across on desktop, so a short category list still fills its
+              row rather than orphaning one tile. */}
+          <div className="mt-14 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {loading
               ? Array.from({ length: 6 }).map((_, index) => (
-                  <div key={index} className="h-32 animate-pulse rounded-[var(--radius-card)] bg-surface-sunk" />
+                  <div
+                    key={index}
+                    className="aspect-[5/6] animate-pulse rounded-[var(--radius-card)] bg-surface-sunk"
+                  />
                 ))
-              : categories.map((category) => {
-                  const Icon = iconFor(category.icon)
-
-                  return (
-                    <Link
-                      key={category.id}
-                      to={`/services?category=${category.slug}`}
-                      className="group relative flex flex-col items-start gap-3 overflow-hidden rounded-[var(--radius-card)] border border-line bg-canvas p-4 transition-all duration-200 hover:-translate-y-1 hover:border-accent hover:shadow-[var(--shadow-lift)]"
-                    >
-                      {/* Accent bloom that only surfaces on hover. */}
-                      <span
-                        className="pointer-events-none absolute -top-8 -right-8 size-24 rounded-full bg-accent/0 blur-2xl transition-colors duration-300 group-hover:bg-accent/20"
-                        aria-hidden="true"
-                      />
-                      {/* A hairline outlined glyph reads more considered than
-                          a filled pastel chip. */}
-                      <span className="relative flex size-10 items-center justify-center rounded-full border border-line-strong text-ink-soft transition-colors duration-200 group-hover:border-accent group-hover:text-accent">
-                        <Icon size={17} strokeWidth={1.5} aria-hidden="true" />
-                      </span>
-                      <span className="relative">
-                        <span className="block text-sm leading-snug font-medium tracking-tight text-ink transition-colors group-hover:text-accent">
-                          {category.name}
-                        </span>
-                        <span className="tabular mt-1 block text-[0.6875rem] tracking-wide text-muted uppercase">
-                          {category.services_count} service{category.services_count === 1 ? '' : 's'}
-                        </span>
-                      </span>
-                    </Link>
-                  )
-                })}
+              : categories.map((category) => (
+                  <CategoryTile key={category.id} category={category} icon={iconFor(category.icon)} />
+                ))}
           </div>
         </div>
       </section>
 
       {/* --- Featured ------------------------------------------------------ */}
       <section>
-        <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+        <div className="shell section">
           <SectionTitle
             eyebrow="Highest rated"
             title="Booked again and again"
@@ -262,11 +282,11 @@ export default function Home() {
 
       {/* --- Provider CTA -------------------------------------------------- */}
       <section className="border-t border-line bg-surface">
-        <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+        <div className="shell section">
           <div className="flex flex-col items-start justify-between gap-8 rounded-[var(--radius-card)] border border-line bg-canvas p-8 lg:flex-row lg:items-center lg:p-12">
             <div className="max-w-2xl">
               <p className="eyebrow">For providers</p>
-              <h2 className="mt-3 text-3xl font-semibold text-ink sm:text-4xl">
+              <h2 className="mt-3 text-3xl text-ink sm:text-4xl">
                 Your calendar, minus the back-and-forth.
               </h2>
               <p className="mt-4 text-sm leading-relaxed text-muted sm:text-base">

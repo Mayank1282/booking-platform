@@ -114,7 +114,7 @@ export default function AppLayout() {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4" aria-label="Dashboard">
+      <nav className="flex-1 space-y-1 overflow-y-auto overscroll-contain px-3 pb-4" aria-label="Dashboard">
         {items.map(({ to, label, icon: Icon, end }) => (
           <NavLink key={to} to={to} end={end} className={linkClass}>
             <Icon size={17} aria-hidden="true" />

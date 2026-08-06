@@ -9,11 +9,21 @@ import { X } from 'lucide-react'
 export default function Modal({ open, onClose, title, eyebrow, children, footer, size = 'md' }) {
   const panelRef = useRef(null)
 
+  /*
+    `onClose` is passed as an inline arrow by every caller, so its identity
+    changes on each render. Holding it in a ref keeps it out of the effect's
+    dependencies — otherwise the effect re-ran on every keystroke and its
+    `panelRef.focus()` stole focus back from whatever field was being typed in,
+    letting only one character through at a time.
+  */
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+
   useEffect(() => {
     if (!open) return
 
     const onKeyDown = (event) => {
-      if (event.key === 'Escape') onClose?.()
+      if (event.key === 'Escape') onCloseRef.current?.()
     }
 
     document.addEventListener('keydown', onKeyDown)
@@ -21,13 +31,16 @@ export default function Modal({ open, onClose, title, eyebrow, children, footer,
     // Freeze the page behind the sheet so it cannot scroll under the overlay.
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+
+    // Focus the panel once on open, so screen readers land inside the dialog.
     panelRef.current?.focus()
 
     return () => {
       document.removeEventListener('keydown', onKeyDown)
       document.body.style.overflow = previousOverflow
     }
-  }, [open, onClose])
+    // Deliberately keyed on `open` alone — see the note above.
+  }, [open])
 
   if (!open) return null
 
@@ -69,7 +82,7 @@ export default function Modal({ open, onClose, title, eyebrow, children, footer,
           </button>
         </div>
 
-        <div className="scroll-rail flex-1 overflow-y-auto px-5 py-5">{children}</div>
+        <div className="scroll-rail flex-1 overflow-y-auto overscroll-contain px-5 py-5">{children}</div>
 
         {footer && (
           <div className="flex flex-col-reverse gap-2 border-t border-line px-5 py-4 sm:flex-row sm:justify-end">

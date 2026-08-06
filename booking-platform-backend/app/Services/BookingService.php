@@ -65,6 +65,9 @@ class BookingService
                 'price_amount' => $service->price,
                 'currency' => $service->currency,
                 'status' => BookingStatus::Pending,
+                // A hold, not a booking. It reserves the slot only long enough
+                // to pay; once this passes the slot is bookable by anyone else.
+                'expires_at' => now()->addMinutes((int) config('booking.hold_minutes')),
                 'notes' => $notes,
             ]);
 
@@ -84,14 +87,31 @@ class BookingService
         return $booking;
     }
 
-    /** Provider accepts a pending booking. */
+    /**
+     * Promotes a hold into a real booking. Called when payment settles, or by
+     * a provider accepting a request directly.
+     */
     public function confirm(Booking $booking): Booking
     {
         $this->assertTransition($booking, BookingStatus::Confirmed);
 
+        // Refuse to confirm a hold that already lapsed — the slot may have
+        // been taken by someone else in the meantime.
+        if ($booking->isExpiredHold() && ! $this->availability->isSlotBookable(
+            $booking->service,
+            CarbonImmutable::parse($booking->starts_at),
+            ignoreBookingId: $booking->id,
+        )) {
+            throw new BookingException(
+                'This reservation expired and the slot has since been taken. Any payment will be refunded.'
+            );
+        }
+
         $booking->update([
             'status' => BookingStatus::Confirmed,
             'confirmed_at' => now(),
+            // No longer a hold.
+            'expires_at' => null,
         ]);
 
         $booking->load(['service', 'provider', 'client']);
@@ -126,7 +146,23 @@ class BookingService
         $this->assertTransition($booking, BookingStatus::Cancelled);
 
         $isClient = $actor->id === $booking->client_id;
+        $isProvider = $actor->id === $booking->provider_id;
         $window = (int) config('booking.cancellation_window_hours');
+
+        /*
+         * A paid booking is a commitment the provider has taken money for, so
+         * they cannot walk away from it unilaterally — the client would lose
+         * their slot at the provider's convenience. Only the client may cancel
+         * once payment has settled (and they are refunded when they do).
+         * Admins retain an override for genuine disputes.
+         */
+        if ($isProvider && $booking->isPaid()) {
+            throw new BookingException(
+                'This booking has been paid for and cannot be cancelled from your side. '
+                .'Contact the client to agree a change, or ask an administrator to intervene.',
+                403
+            );
+        }
 
         if ($isClient && $booking->starts_at->isFuture() && now()->diffInHours($booking->starts_at, absolute: false) < $window) {
             throw new BookingException("Bookings can only be cancelled at least {$window} hours in advance. Please contact the provider directly.");

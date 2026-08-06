@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable([
     'code', 'client_id', 'provider_id', 'service_id',
     'starts_at', 'ends_at', 'duration_minutes',
-    'price_amount', 'currency', 'status', 'notes',
+    'price_amount', 'currency', 'status', 'expires_at', 'notes',
     'confirmed_at', 'completed_at', 'cancelled_at', 'cancelled_by', 'cancellation_reason',
 ])]
 class Booking extends Model
@@ -29,6 +29,7 @@ class Booking extends Model
             'duration_minutes' => 'integer',
             'price_amount' => 'decimal:2',
             'status' => BookingStatus::class,
+            'expires_at' => 'datetime',
             'confirmed_at' => 'datetime',
             'completed_at' => 'datetime',
             'cancelled_at' => 'datetime',
@@ -69,11 +70,11 @@ class Booking extends Model
 
     // --- Scopes -----------------------------------------------------------
 
+    /** Ahead in time and still live — a lapsed hold is not "upcoming". */
     #[Scope]
     protected function upcoming(Builder $query): void
     {
-        $query->where('starts_at', '>=', now())
-            ->whereIn('status', BookingStatus::blocking());
+        $query->where('starts_at', '>=', now())->blocking();
     }
 
     #[Scope]
@@ -82,11 +83,51 @@ class Booking extends Model
         $query->where('starts_at', '<', now());
     }
 
-    /** Bookings that still hold a slot — used for overlap checks. */
+    /**
+     * Bookings that still hold a slot — used for every overlap check.
+     *
+     * Confirmed bookings always block. A pending one blocks only while its
+     * hold is alive, so an abandoned checkout frees the slot the moment it
+     * lapses, without waiting for a sweep to run. Correctness therefore does
+     * not depend on the scheduler — `bookings:expire` only tidies the labels.
+     */
     #[Scope]
     protected function blocking(Builder $query): void
     {
-        $query->whereIn('status', BookingStatus::blocking());
+        $query->where(function (Builder $q) {
+            $q->where('status', BookingStatus::Confirmed)
+                ->orWhere(function (Builder $pending) {
+                    $pending->where('status', BookingStatus::Pending)
+                        ->where(fn (Builder $hold) => $hold
+                            ->whereNull('expires_at')
+                            ->orWhere('expires_at', '>', now()));
+                });
+        });
+    }
+
+    /** Bookings that are real — paid for, or already delivered. */
+    #[Scope]
+    protected function real(Builder $query): void
+    {
+        $query->whereIn('status', BookingStatus::real());
+    }
+
+    /** A hold that has run out of time and no longer reserves anything. */
+    public function isExpiredHold(): bool
+    {
+        return $this->status === BookingStatus::Pending
+            && $this->expires_at !== null
+            && $this->expires_at->isPast();
+    }
+
+    /** Seconds left to pay, or null when this is not a live hold. */
+    public function holdSecondsRemaining(): ?int
+    {
+        if ($this->status !== BookingStatus::Pending || $this->expires_at === null) {
+            return null;
+        }
+
+        return max(0, now()->diffInSeconds($this->expires_at, absolute: false));
     }
 
     /** Bookings whose time range intersects the given window. */

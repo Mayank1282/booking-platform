@@ -66,17 +66,28 @@ class Service extends Model
     }
 
     /**
-     * Matches services whose title *begins* with the term.
+     * Matches services whose title, category, provider or city *begins* with
+     * the term.
      *
-     * Deliberately strict: only the start of the title counts, so "t" returns
-     * "Tax Planning Consultation" and nothing else. Matching mid-title words
-     * would also surface "Deep Tissue Massage" and "Beard Sculpt & Hot Towel",
-     * which is not what a first-letter search is expected to do.
+     * Prefix-anchored on purpose: "t" returns "Tax Planning Consultation" and
+     * not every listing containing a "t". Matching the category and provider
+     * as well as the title is what keeps this consistent with the typeahead —
+     * that offers "Hair & Beauty" for "hair", so the listing has to return the
+     * services in it, even though no service title starts with "hair".
      */
     #[Scope]
     protected function search(Builder $query, ?string $term): void
     {
-        $query->when($term, fn (Builder $q) => $q->where('title', 'like', "{$term}%"));
+        $query->when($term, function (Builder $q) use ($term) {
+            $like = "{$term}%";
+
+            $q->where(fn (Builder $inner) => $inner
+                ->where('title', 'like', $like)
+                ->orWhereHas('category', fn ($c) => $c->where('name', 'like', $like))
+                ->orWhereHas('provider.providerProfile', fn ($p) => $p
+                    ->where('business_name', 'like', $like)
+                    ->orWhere('city', 'like', $like)));
+        });
     }
 
     #[Scope]

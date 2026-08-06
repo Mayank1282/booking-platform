@@ -16,7 +16,15 @@ class PaymentResource extends JsonResource
             'status' => $this->status->value,
             'status_label' => $this->status->label(),
             'gateway' => $this->gateway,
+
+            // Gateway identifiers, so a booking can be traced end to end:
+            // intent → charge → refund, each matching Stripe's own records.
             'reference' => $this->reference,
+            'charge_reference' => $this->charge_reference,
+            'refund_reference' => $this->refund_reference,
+            'refund_amount' => $this->refund_amount !== null ? (float) $this->refund_amount : null,
+            'refund_reason' => $this->refund_reason,
+
             'receipt_url' => $this->receipt_url,
             'failure_reason' => $this->failure_reason,
             'paid_at' => $this->paid_at?->toIso8601String(),

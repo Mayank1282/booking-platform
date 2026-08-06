@@ -16,6 +16,8 @@ export const bookingTone = {
   confirmed: 'sage',
   completed: 'ink',
   cancelled: 'rose',
+  // A hold that ran out before payment. Neutral, because nothing happened.
+  expired: 'neutral',
 }
 
 export const paymentTone = {

@@ -37,7 +37,7 @@ class BookingController extends Controller
             : $user->bookingsAsClient();
 
         $bookings = $query
-            ->with(['service.category', 'client', 'provider.providerProfile', 'payment', 'review'])
+            ->with(['service.category', 'client', 'provider.providerProfile', 'payment', 'review', 'canceller:id,name'])
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
             ->when($request->string('range')->toString() === 'upcoming', fn ($q) => $q->upcoming())
             ->when($request->string('range')->toString() === 'past', fn ($q) => $q->past())
@@ -52,7 +52,7 @@ class BookingController extends Controller
         $this->authorizeParticipant($request, $booking);
 
         return $this->ok(new BookingResource(
-            $booking->load(['service.category', 'client', 'provider.providerProfile', 'payment', 'review'])
+            $booking->load(['service.category', 'client', 'provider.providerProfile', 'payment', 'review', 'canceller:id,name'])
         ));
     }
 
@@ -81,7 +81,7 @@ class BookingController extends Controller
         $booking = $this->bookings->confirm($booking);
 
         return $this->ok(
-            new BookingResource($booking->load(['service.category', 'client', 'provider', 'payment'])),
+            new BookingResource($booking->load(['service.category', 'client', 'provider', 'payment', 'canceller:id,name'])),
             'Booking confirmed.'
         );
     }
@@ -93,7 +93,7 @@ class BookingController extends Controller
         $booking = $this->bookings->complete($booking);
 
         return $this->ok(
-            new BookingResource($booking->load(['service.category', 'client', 'provider', 'payment'])),
+            new BookingResource($booking->load(['service.category', 'client', 'provider', 'payment', 'canceller:id,name'])),
             'Booking marked as completed.'
         );
     }
@@ -112,12 +112,19 @@ class BookingController extends Controller
 
         $payment = $booking->payment;
 
-        if ($payment && $payment->status === PaymentStatus::Succeeded) {
-            $this->payments->refund($payment);
+        if ($payment) {
+            if ($payment->status === PaymentStatus::Succeeded) {
+                // Money actually changed hands — give it back.
+                $this->payments->refund($payment);
+            } else {
+                // Nothing was charged. Void the open intent so it cannot be
+                // paid later, and stop the record sitting at "pending" forever.
+                $this->payments->voidUnpaidIntent($payment);
+            }
         }
 
         return $this->ok(
-            new BookingResource($booking->fresh(['service.category', 'client', 'provider', 'payment'])),
+            new BookingResource($booking->fresh(['service.category', 'client', 'provider', 'payment', 'canceller:id,name'])),
             'Booking cancelled.'
         );
     }

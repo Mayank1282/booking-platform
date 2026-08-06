@@ -71,7 +71,15 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    /*
+     * The marketplace's operating timezone.
+     *
+     * Providers set working hours as wall-clock times ("I work 09:00–18:00"),
+     * so the whole application has to agree on which clock that is. Running in
+     * UTC while the browser rendered IST made the same slot display as 9:00 AM
+     * in the picker and 2:30 PM on the booking — one instant, two clocks.
+     */
+    'timezone' => env('APP_TIMEZONE', 'Asia/Kolkata'),
 
     /*
     |--------------------------------------------------------------------------

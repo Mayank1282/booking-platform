@@ -94,7 +94,11 @@ class PaymentService
             'gateway' => 'stripe',
             'reference' => $intent->id,
             'client_secret' => $intent->client_secret,
-            'status' => PaymentStatus::Processing,
+            // Still Pending: a PaymentIntent that exists is only an *offer* to
+            // pay. Stripe reports it as `requires_payment_method` until a card
+            // is actually submitted. Marking it Processing here made unpaid
+            // bookings display as mid-payment forever.
+            'status' => PaymentStatus::Pending,
         ]);
 
         return [
@@ -110,17 +114,41 @@ class PaymentService
      * an already-succeeded payment is a no-op, which matters because both the
      * client redirect and the Stripe webhook can arrive for the same charge.
      */
-    public function markSucceeded(Payment $payment, ?string $receiptUrl = null): Payment
+    public function markSucceeded(Payment $payment, ?string $receiptUrl = null, ?string $chargeId = null): Payment
     {
         if ($payment->isSucceeded()) {
             return $payment;
         }
 
-        DB::transaction(function () use ($payment, $receiptUrl) {
+        /*
+         * Pull the charge id and receipt straight from Stripe when they were
+         * not supplied. The browser-return path has no webhook payload to read
+         * them from, and losing them would leave a settled payment with no link
+         * to the actual charge.
+         */
+        if ($this->usesStripe() && $payment->gateway === 'stripe' && $payment->reference && ! $chargeId) {
+            try {
+                $intent = $this->stripe()->paymentIntents->retrieve($payment->reference, [
+                    'expand' => ['latest_charge'],
+                ]);
+
+                $charge = $intent->latest_charge ?? null;
+                $chargeId = is_object($charge) ? $charge->id : $charge;
+                $receiptUrl ??= is_object($charge) ? ($charge->receipt_url ?? null) : null;
+            } catch (\Throwable $e) {
+                Log::warning('Could not read charge details from Stripe', [
+                    'payment_id' => $payment->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        DB::transaction(function () use ($payment, $receiptUrl, $chargeId) {
             $payment->update([
                 'status' => PaymentStatus::Succeeded,
                 'paid_at' => now(),
                 'receipt_url' => $receiptUrl ?? $payment->receipt_url,
+                'charge_reference' => $chargeId ?? $payment->charge_reference,
                 'failure_reason' => null,
             ]);
 
@@ -145,20 +173,75 @@ class PaymentService
         return $payment->fresh();
     }
 
-    /** Refunds a settled payment (used when a provider cancels a paid booking). */
-    public function refund(Payment $payment): Payment
+    /**
+     * Voids an unpaid PaymentIntent when its booking is cancelled.
+     *
+     * Without this, cancelling a booking someone opened checkout for leaves a
+     * live intent in Stripe that could still be confirmed afterwards — paying
+     * for a booking that no longer exists.
+     */
+    public function voidUnpaidIntent(Payment $payment): void
+    {
+        if ($payment->isSucceeded() || $payment->status === PaymentStatus::Refunded) {
+            return;
+        }
+
+        if ($this->usesStripe() && $payment->gateway === 'stripe' && $payment->reference) {
+            try {
+                $intent = $this->stripe()->paymentIntents->retrieve($payment->reference);
+
+                // Only these are cancellable; anything settled is handled by refund().
+                if (in_array($intent->status, [
+                    'requires_payment_method', 'requires_confirmation',
+                    'requires_action', 'requires_capture',
+                ], true)) {
+                    $this->stripe()->paymentIntents->cancel($payment->reference);
+                }
+            } catch (\Throwable $e) {
+                // Tidying up must never block a cancellation the user asked for.
+                Log::warning('Could not void PaymentIntent', [
+                    'payment_id' => $payment->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $payment->update([
+            'status' => PaymentStatus::Failed,
+            'failure_reason' => 'The booking was cancelled before payment was completed.',
+        ]);
+    }
+
+    /**
+     * Refunds a settled payment (used when a booking with a paid charge is
+     * cancelled).
+     *
+     * The refund's own id is stored alongside the payment so our ledger can be
+     * reconciled against Stripe's line by line — without it there is no way to
+     * prove which Stripe refund corresponds to which booking.
+     */
+    public function refund(Payment $payment, ?string $reason = null): Payment
     {
         if (! $payment->isRefundable()) {
             throw new BookingException('Only a settled payment can be refunded.');
         }
 
+        $refundId = null;
+        $refundAmount = (float) $payment->amount;
+
         if ($this->usesStripe() && $payment->gateway === 'stripe' && $payment->reference) {
-            $this->stripe()->refunds->create(['payment_intent' => $payment->reference]);
+            $refund = $this->stripe()->refunds->create(['payment_intent' => $payment->reference]);
+
+            $refundId = $refund->id;
+            $refundAmount = $this->fromMinorUnits($refund->amount, $refund->currency);
         }
 
         $payment->update([
             'status' => PaymentStatus::Refunded,
             'refunded_at' => now(),
+            'refund_reference' => $refundId,
+            'refund_amount' => $refundAmount,
+            'refund_reason' => $reason ?? 'Booking cancelled.',
         ]);
 
         return $payment->fresh();
@@ -192,15 +275,24 @@ class PaymentService
             match ($type) {
                 'payment_intent.succeeded' => $this->markSucceeded(
                     $payment,
-                    $intent['charges']['data'][0]['receipt_url'] ?? null
+                    $intent['charges']['data'][0]['receipt_url'] ?? null,
+                    // `latest_charge` on newer API versions, `charges.data` on older.
+                    $intent['latest_charge'] ?? ($intent['charges']['data'][0]['id'] ?? null),
                 ),
                 'payment_intent.payment_failed' => $this->markFailed(
                     $payment,
                     $intent['last_payment_error']['message'] ?? null
                 ),
+                // A refund issued from the Stripe dashboard rather than by us,
+                // so the ids still land in our ledger.
                 'charge.refunded' => $payment->update([
                     'status' => PaymentStatus::Refunded,
                     'refunded_at' => now(),
+                    'charge_reference' => $intent['id'] ?? $payment->charge_reference,
+                    'refund_reference' => $intent['refunds']['data'][0]['id'] ?? $payment->refund_reference,
+                    'refund_amount' => isset($intent['amount_refunded'])
+                        ? $this->fromMinorUnits((int) $intent['amount_refunded'], $intent['currency'] ?? 'inr')
+                        : $payment->refund_amount,
                 ]),
                 default => Log::info('Unhandled Stripe event type', ['type' => $type]),
             };
@@ -224,5 +316,15 @@ class PaymentService
         return in_array(strtolower($currency), $zeroDecimal, true)
             ? (int) round($amount)
             : (int) round($amount * 100);
+    }
+
+    /** The inverse, for reading amounts back out of Stripe responses. */
+    private function fromMinorUnits(int $amount, string $currency): float
+    {
+        $zeroDecimal = (array) config('booking.payments.zero_decimal_currencies');
+
+        return in_array(strtolower($currency), $zeroDecimal, true)
+            ? (float) $amount
+            : $amount / 100;
     }
 }

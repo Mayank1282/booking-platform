@@ -13,8 +13,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'booking_id', 'client_id', 'provider_id', 'amount', 'currency',
-    'status', 'gateway', 'reference', 'client_secret', 'receipt_url',
-    'failure_reason', 'paid_at', 'refunded_at', 'meta',
+    'status', 'gateway', 'reference', 'charge_reference', 'client_secret',
+    'receipt_url', 'failure_reason', 'paid_at',
+    'refunded_at', 'refund_reference', 'refund_amount', 'refund_reason', 'meta',
 ])]
 #[Hidden(['client_secret'])] // only ever handed back through the explicit intent endpoint
 class Payment extends Model
@@ -25,6 +26,7 @@ class Payment extends Model
     {
         return [
             'amount' => 'decimal:2',
+            'refund_amount' => 'decimal:2',
             'status' => PaymentStatus::class,
             'paid_at' => 'datetime',
             'refunded_at' => 'datetime',

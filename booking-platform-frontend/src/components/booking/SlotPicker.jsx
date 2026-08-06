@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { isSameDay, startOfDay } from 'date-fns'
 import { CalendarX2, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
@@ -36,10 +36,19 @@ export default function SlotPicker({ serviceSlug, value, onChange }) {
     }
   }, [serviceSlug, selectedDay])
 
-  // Changing day invalidates whatever slot was picked on the previous one.
+  /*
+    Changing day invalidates whatever slot was picked on the previous one.
+
+    `onChange` is held in a ref so a caller passing an inline arrow cannot make
+    this effect re-run on every render — the same trap that made modal inputs
+    accept only one character at a time.
+  */
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
+
   useEffect(() => {
-    if (value && !isSameDay(new Date(value), selectedDay)) onChange(null)
-  }, [selectedDay, value, onChange])
+    if (value && !isSameDay(new Date(value), selectedDay)) onChangeRef.current(null)
+  }, [selectedDay, value])
 
   const available = slots.filter((slot) => slot.available)
 

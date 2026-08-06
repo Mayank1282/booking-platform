@@ -9,9 +9,8 @@ import Badge, { bookingTone } from '@/components/ui/Badge'
 import { Avatar, StatTile } from '@/components/ui/Misc'
 import { ErrorState, LoadingState } from '@/components/ui/States'
 import { compactMoney, dateShort, money, relative } from '@/lib/format'
+import { useChartColors } from '@/lib/chartColors'
 
-const CHART_ACCENT = '#c2410c'
-const CHART_SAGE = '#4d7c6f'
 
 function ChartTooltip({ active, payload, label, formatter }) {
   if (!active || !payload?.length) return null
@@ -27,6 +26,7 @@ function ChartTooltip({ active, payload, label, formatter }) {
 }
 
 export default function AdminOverview() {
+  const chart = useChartColors()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -54,7 +54,7 @@ export default function AdminOverview() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="eyebrow mb-2">Administration</p>
-          <h1 className="text-3xl font-semibold text-ink sm:text-4xl">Platform overview</h1>
+          <h1 className="text-3xl text-ink sm:text-4xl">Platform overview</h1>
           <p className="mt-2 text-sm text-muted">Everything happening across Slotwise, at a glance.</p>
         </div>
         <Button to="/app/admin/users" icon={Users}>
@@ -138,7 +138,7 @@ export default function AdminOverview() {
                   width={56}
                 />
                 <Tooltip cursor={{ fill: 'var(--color-surface-sunk)' }} content={<ChartTooltip formatter={(v) => money(v)} />} />
-                <Bar dataKey="total" fill={CHART_ACCENT} radius={[4, 4, 0, 0]} maxBarSize={44} />
+                <Bar dataKey="total" fill={chart.accent} radius={[4, 4, 0, 0]} maxBarSize={44} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -153,7 +153,7 @@ export default function AdminOverview() {
                 <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fill: 'var(--color-muted)', fontSize: 12 }} />
                 <YAxis tickLine={false} axisLine={false} tick={{ fill: 'var(--color-muted)', fontSize: 11 }} width={36} allowDecimals={false} />
                 <Tooltip cursor={{ fill: 'var(--color-surface-sunk)' }} content={<ChartTooltip />} />
-                <Bar dataKey="total" fill={CHART_SAGE} radius={[4, 4, 0, 0]} maxBarSize={44} />
+                <Bar dataKey="total" fill={chart.sage} radius={[4, 4, 0, 0]} maxBarSize={44} />
               </BarChart>
             </ResponsiveContainer>
           </div>

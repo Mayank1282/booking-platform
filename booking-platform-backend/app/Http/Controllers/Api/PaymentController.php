@@ -82,9 +82,17 @@ class PaymentController extends Controller
 
         $intent = $this->payments->stripe()->paymentIntents->retrieve($payment->reference);
 
+        /*
+         * Map Stripe's intent status onto ours. `requires_payment_method` and
+         * `requires_confirmation` mean nothing has been charged yet, so those
+         * stay Pending rather than looking like a payment in flight.
+         */
         $payment = match ($intent->status) {
             'succeeded' => $this->payments->markSucceeded($payment),
+            'processing' => tap($payment)->update(['status' => PaymentStatus::Processing]),
             'canceled' => $this->payments->markFailed($payment, 'The payment was cancelled.'),
+            'requires_payment_method', 'requires_confirmation', 'requires_action' => tap($payment)
+                ->update(['status' => PaymentStatus::Pending]),
             default => $payment,
         };
 

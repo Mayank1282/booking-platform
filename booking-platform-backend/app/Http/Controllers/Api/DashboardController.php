@@ -35,8 +35,10 @@ class DashboardController extends Controller
         return $this->ok([
             'role' => 'provider',
             'stats' => [
-                'total_bookings' => (clone $bookings)->count(),
-                'pending_bookings' => (clone $bookings)->where('status', BookingStatus::Pending)->count(),
+                // Real bookings only — an abandoned hold was never a booking.
+                'total_bookings' => (clone $bookings)->real()->count(),
+                'pending_bookings' => (clone $bookings)->where('status', BookingStatus::Pending)
+                    ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))->count(),
                 'upcoming_bookings' => (clone $bookings)->upcoming()->count(),
                 'completed_bookings' => (clone $bookings)->where('status', BookingStatus::Completed)->count(),
                 'total_earnings' => round((float) (clone $earnings)->sum('amount'), 2),
@@ -73,7 +75,8 @@ class DashboardController extends Controller
         return $this->ok([
             'role' => 'client',
             'stats' => [
-                'total_bookings' => (clone $bookings)->count(),
+                // Real bookings only — an abandoned hold was never a booking.
+                'total_bookings' => (clone $bookings)->real()->count(),
                 'upcoming_bookings' => (clone $bookings)->upcoming()->count(),
                 'completed_bookings' => (clone $bookings)->where('status', BookingStatus::Completed)->count(),
                 'cancelled_bookings' => (clone $bookings)->where('status', BookingStatus::Cancelled)->count(),

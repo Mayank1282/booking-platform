@@ -61,11 +61,14 @@ export function Avatar({ name = '', src, size = 40, className = '' }) {
 /** Editorial section heading: mono eyebrow above a serif title. */
 export function SectionTitle({ eyebrow, title, description, action, className = '' }) {
   return (
-    <div className={`flex flex-wrap items-end justify-between gap-4 ${className}`}>
+    <div className={`flex flex-wrap items-end justify-between gap-6 ${className}`}>
       <div className="min-w-0">
-        {eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}
-        <h2 className="text-2xl font-semibold text-ink sm:text-3xl">{title}</h2>
-        {description && <p className="mt-2 max-w-2xl text-sm text-muted">{description}</p>}
+        {eyebrow && <p className="eyebrow mb-4">{eyebrow}</p>}
+        {/* Large and light — weight is carried by size and space, not bold. */}
+        <h2 className="text-3xl text-ink sm:text-4xl lg:text-[2.75rem]">{title}</h2>
+        {description && (
+          <p className="mt-4 max-w-xl text-sm leading-[1.7] text-muted">{description}</p>
+        )}
       </div>
       {action}
     </div>

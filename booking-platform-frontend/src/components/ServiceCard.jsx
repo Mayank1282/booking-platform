@@ -34,13 +34,14 @@ export default function ServiceCard({ service, className = '' }) {
             />
           )}
 
-          {/* Floating glass chips — category on the left, price on the right,
-              so the eye gets the two facts that matter before reading. */}
-          <span className="absolute top-3 left-3 rounded-full border border-white/40 bg-white/75 px-2.5 py-1 text-[0.6875rem] font-medium text-[#3B1D0C] shadow-sm backdrop-blur-md">
+          {/* Category and price float over the artwork, so the eye gets the
+              two facts that matter before reading anything. Built from theme
+              tokens rather than fixed colours, so they follow dark mode. */}
+          <span className="absolute top-3 left-3 rounded-full border border-line/60 bg-surface/85 px-2.5 py-1 text-[0.6875rem] font-medium text-ink-soft backdrop-blur-md">
             {service.category?.name}
           </span>
 
-          <span className="tabular absolute right-3 bottom-3 rounded-full border border-white/40 bg-white/80 px-2.5 py-1 text-sm font-semibold text-[#7C2D12] shadow-sm backdrop-blur-md">
+          <span className="tabular absolute right-3 bottom-3 rounded-full border border-line/60 bg-surface/90 px-2.5 py-1 text-sm font-medium text-accent-ink backdrop-blur-md">
             {money(service.price, service.currency)}
           </span>
         </div>

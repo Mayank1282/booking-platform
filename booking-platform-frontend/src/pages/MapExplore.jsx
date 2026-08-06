@@ -113,7 +113,7 @@ export default function MapExplore() {
 
           {/* Companion list. On mobile it sits under the map; on desktop it
               scrolls independently beside it. */}
-          <aside className="mt-4 lg:mt-0 lg:max-h-[calc(100dvh-18rem)] lg:overflow-y-auto">
+          <aside className="mt-4 lg:mt-0 lg:max-h-[calc(100dvh-18rem)] lg:overflow-y-auto lg:overscroll-contain">
             <p className="tabular mb-3 text-xs text-muted">
               {services.length} location{services.length === 1 ? '' : 's'}
             </p>

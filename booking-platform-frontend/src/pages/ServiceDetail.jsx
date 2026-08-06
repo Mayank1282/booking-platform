@@ -129,9 +129,7 @@ export default function ServiceDetail() {
               <Badge tone="neutral">{service.location_label}</Badge>
             </div>
 
-            <h1 className="mt-4 text-3xl leading-tight font-semibold text-ink sm:text-4xl lg:text-5xl">
-              {service.title}
-            </h1>
+            <h1 className="mt-6 text-4xl text-ink sm:text-5xl lg:text-6xl">{service.title}</h1>
 
             <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted">
               <Rating value={service.rating_avg} count={service.rating_count} size={15} />
@@ -158,7 +156,7 @@ export default function ServiceDetail() {
               <ServiceArtwork
                 service={service}
                 showTitle
-                className="mt-8 aspect-[16/7] w-full rounded-[var(--radius-card)] border border-line"
+                className="mt-10 aspect-[16/8] w-full rounded-[var(--radius-card)] border border-line"
               />
             )}
 
@@ -258,7 +256,13 @@ export default function ServiceDetail() {
               Sticky beside the content on desktop; on mobile it simply
               follows the content in the normal flow. */}
           <aside className="mt-12 lg:mt-0">
-            <div className="lg:sticky lg:top-24">
+            {/*
+              The panel scrolls within itself rather than pushing the page.
+              `overscroll-contain` stops the scroll chaining onto the document
+              once this reaches its end, so the wheel stays where the cursor is.
+              Height is capped to the viewport minus the sticky header.
+            */}
+            <div className="lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:overscroll-contain">
               <Card className="overflow-hidden">
                 <div className="border-b border-line p-5">
                   <div className="flex items-end justify-between gap-3">

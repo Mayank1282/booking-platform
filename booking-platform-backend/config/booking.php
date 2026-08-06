@@ -1,6 +1,14 @@
 <?php
 
 return [
+
+    /*
+     * How long an unpaid booking holds its slot before the reservation lapses
+     * and the time becomes bookable again. Long enough to finish checkout,
+     * short enough that an abandoned attempt does not block anyone.
+     */
+    'hold_minutes' => (int) env('BOOKING_HOLD_MINUTES', 15),
+
     /*
      * Granularity of generated slots, in minutes. A 60-minute service on a
      * 15-minute grid can start at :00, :15, :30 or :45.

@@ -144,7 +144,8 @@ class AdminService
             'services_total' => Service::count(),
             'services_active' => Service::where('is_active', true)->count(),
 
-            'bookings_total' => Booking::count(),
+            // Real bookings only — abandoned holds are not bookings.
+            'bookings_total' => Booking::real()->count(),
             'bookings_upcoming' => Booking::whereIn('status', BookingStatus::blocking())
                 ->where('starts_at', '>=', now())->count(),
 

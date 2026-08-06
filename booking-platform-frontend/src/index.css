@@ -21,67 +21,76 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* --- Warm palette (light) ------------------------------------------- */
-  --color-canvas: #faf7f2;
+  /* --- Bone palette (light) --------------------------------------------
+     Near-white canvas, near-black ink, and a single restrained accent.
+     Colour is rationed deliberately: when almost everything is neutral, the
+     one accent carries real weight and the page reads expensive rather than
+     decorated. */
+  --color-canvas: #faf9f6;
   --color-surface: #ffffff;
-  --color-surface-sunk: #f4efe7;
-  --color-ink: #1c1917;
-  --color-ink-soft: #44403c;
-  --color-muted: #78716c;
-  --color-line: #e7e0d8;
-  --color-line-strong: #d6ccc0;
+  --color-surface-sunk: #f2f0ea;
+  --color-ink: #17150f;
+  --color-ink-soft: #45413a;
+  --color-muted: #837e73;
+  --color-line: #e8e4da;
+  --color-line-strong: #d5cfc2;
 
-  --color-accent: #c2410c;
-  --color-accent-hover: #9a3412;
-  --color-accent-soft: #fdebd8;
-  --color-accent-ink: #7c2d12;
+  /* Deep clay — desaturated and darkened from the old terracotta so it reads
+     as considered rather than loud. */
+  --color-accent: #a63d2a;
+  --color-accent-hover: #8a3021;
+  --color-accent-soft: #f6ece7;
+  --color-accent-ink: #6d2618;
 
-  --color-sage: #4d7c6f;
-  --color-sage-soft: #e3efeb;
-  --color-gold: #b45309;
-  --color-gold-soft: #fdf1dc;
-  --color-rose: #9f1239;
-  --color-rose-soft: #fbe6ec;
+  /* Status colours, muted to sit quietly inside a neutral page. */
+  --color-sage: #4a6b58;
+  --color-sage-soft: #eaefe9;
+  --color-gold: #8a6a2f;
+  --color-gold-soft: #f5efe1;
+  --color-rose: #8f3040;
+  --color-rose-soft: #f7eaec;
 
   /* --- Typography ------------------------------------------------------ */
   --font-display: 'Fraunces', 'Georgia', serif;
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
 
-  /* --- Shape ------------------------------------------------------------ */
-  --radius-card: 1rem;
-  --radius-inner: 0.375rem;
+  /* --- Shape ------------------------------------------------------------
+     Tighter radii than before: at this level of restraint, softly rounded
+     everything reads friendly-app rather than gallery. */
+  --radius-card: 0.625rem;
+  --radius-inner: 0.3125rem;
 
-  /* Soft, warm-tinted elevation — never a grey drop shadow. */
-  --shadow-lift: 0 1px 2px rgb(28 25 23 / 0.04), 0 8px 24px -12px rgb(28 25 23 / 0.12);
-  --shadow-pop: 0 2px 4px rgb(28 25 23 / 0.06), 0 16px 40px -16px rgb(28 25 23 / 0.2);
+  /* Elevation is almost absent. Structure comes from whitespace and hairlines. */
+  --shadow-lift: 0 1px 2px rgb(23 21 15 / 0.03), 0 12px 32px -20px rgb(23 21 15 / 0.14);
+  --shadow-pop: 0 2px 6px rgb(23 21 15 / 0.05), 0 28px 60px -28px rgb(23 21 15 / 0.22);
 }
 
-/* --- Warm dark mode: espresso, never blue-black ------------------------ */
+/* --- Dark: warm graphite, never blue-black ----------------------------- */
 .dark {
-  --color-canvas: #1a1614;
-  --color-surface: #241e1b;
-  --color-surface-sunk: #16120f;
-  --color-ink: #f5f0ea;
-  --color-ink-soft: #d6cec5;
-  --color-muted: #a8a29e;
-  --color-line: #3a322d;
-  --color-line-strong: #4d423b;
+  --color-canvas: #100f0d;
+  --color-surface: #1a1815;
+  --color-surface-sunk: #0a0908;
+  --color-ink: #f4f1ea;
+  --color-ink-soft: #cfc9bd;
+  --color-muted: #948e82;
+  --color-line: #2b2823;
+  --color-line-strong: #3d3830;
 
-  --color-accent: #ea6a2c;
-  --color-accent-hover: #f4834b;
-  --color-accent-soft: #3a241a;
-  --color-accent-ink: #fbc9a5;
+  --color-accent: #d4674a;
+  --color-accent-hover: #e07d61;
+  --color-accent-soft: #2c1c16;
+  --color-accent-ink: #f0b9a5;
 
-  --color-sage: #6b9b8b;
-  --color-sage-soft: #22322d;
-  --color-gold: #d9a441;
-  --color-gold-soft: #33280f;
-  --color-rose: #f0637f;
-  --color-rose-soft: #3a1a23;
+  --color-sage: #7fa38c;
+  --color-sage-soft: #1b2620;
+  --color-gold: #c2a05e;
+  --color-gold-soft: #2a2313;
+  --color-rose: #d4788a;
+  --color-rose-soft: #2b171c;
 
-  --shadow-lift: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.6);
-  --shadow-pop: 0 2px 4px rgb(0 0 0 / 0.4), 0 16px 40px -16px rgb(0 0 0 / 0.7);
+  --shadow-lift: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px -20px rgb(0 0 0 / 0.7);
+  --shadow-pop: 0 2px 6px rgb(0 0 0 / 0.5), 0 28px 60px -28px rgb(0 0 0 / 0.8);
 }
 
 @layer base {
@@ -111,13 +120,24 @@
     overflow-x: hidden;
   }
 
+  /*
+    Display type is set light and large. Weight is what separates "editorial"
+    from "expensive": at 40px+, 600 reads like a headline in a brochure while
+    400–500 reads like a gallery wall. Negative tracking keeps it tight.
+  */
   h1,
   h2,
   h3 {
     font-family: var(--font-display);
     font-optical-sizing: auto;
-    letter-spacing: -0.02em;
+    font-weight: 400;
+    letter-spacing: -0.028em;
+    line-height: 1.04;
     text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
   }
 
   /* Visible, on-brand focus ring everywhere. */
@@ -152,13 +172,53 @@
     The editorial eyebrow: small uppercase mono label that sits above serif
     headings. Used throughout to set the magazine tone.
   */
+  /* Small mono label above a large serif heading. Wide tracking is what makes
+     it read as a considered label rather than just small text. */
   .eyebrow {
     font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font-size: 0.625rem;
     font-weight: 500;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--color-muted);
+  }
+
+  /*
+    Section rhythm. Generous and consistent — in a minimal layout the spacing
+    is the design, so it is defined once here rather than guessed per page.
+  */
+  .section {
+    padding-block: 5rem;
+  }
+
+  @media (min-width: 1024px) {
+    .section {
+      padding-block: 8rem;
+    }
+  }
+
+  .shell {
+    margin-inline: auto;
+    width: 100%;
+    max-width: 80rem;
+    padding-inline: 1.25rem;
+  }
+
+  @media (min-width: 640px) {
+    .shell {
+      padding-inline: 2rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .shell {
+      padding-inline: 3rem;
+    }
+  }
+
+  /* Hairline rule used to separate sections instead of boxes and shadows. */
+  .rule {
+    border-top: 1px solid var(--color-line);
   }
 
   /* Anything numeric — prices, times, codes, stat values. */
@@ -243,6 +303,77 @@
 
   .animate-rise {
     animation: rise 0.24s ease-out both;
+  }
+
+  /*
+    Hero booking carousel. The outgoing card swings away to the left on its own
+    axis while the next arrives from the right — a turn rather than a slide, so
+    the depth of the tilt is what carries the motion.
+  */
+  @keyframes card-out {
+    from {
+      opacity: 1;
+      transform: rotateY(-14deg) rotateX(7deg) rotateZ(1.5deg) translateX(0) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: rotateY(-70deg) rotateX(7deg) rotateZ(1.5deg) translateX(-42%) scale(0.88);
+    }
+  }
+
+  @keyframes card-in {
+    from {
+      opacity: 0;
+      transform: rotateY(28deg) rotateX(7deg) rotateZ(1.5deg) translateX(34%) scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: rotateY(-14deg) rotateX(7deg) rotateZ(1.5deg) translateX(0) scale(1);
+    }
+  }
+
+  /* Dragging backwards mirrors the motion, so the card always leaves on the
+     side you pushed it toward. */
+  @keyframes card-out-right {
+    from {
+      opacity: 1;
+      transform: rotateY(-14deg) rotateX(7deg) rotateZ(1.5deg) translateX(0) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: rotateY(40deg) rotateX(7deg) rotateZ(1.5deg) translateX(42%) scale(0.88);
+    }
+  }
+
+  @keyframes card-in-left {
+    from {
+      opacity: 0;
+      transform: rotateY(-58deg) rotateX(7deg) rotateZ(1.5deg) translateX(-34%) scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: rotateY(-14deg) rotateX(7deg) rotateZ(1.5deg) translateX(0) scale(1);
+    }
+  }
+
+  .animate-card-out {
+    animation: card-out 0.7s cubic-bezier(0.4, 0, 0.2, 1) both;
+    transform-origin: left center;
+  }
+
+  .animate-card-in {
+    animation: card-in 0.7s cubic-bezier(0.4, 0, 0.2, 1) both;
+    transform-origin: right center;
+  }
+
+  .animate-card-out-right {
+    animation: card-out-right 0.7s cubic-bezier(0.4, 0, 0.2, 1) both;
+    transform-origin: right center;
+  }
+
+  .animate-card-in-left {
+    animation: card-in-left 0.7s cubic-bezier(0.4, 0, 0.2, 1) both;
+    transform-origin: left center;
   }
 }
 

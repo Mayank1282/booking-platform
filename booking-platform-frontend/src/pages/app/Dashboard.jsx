@@ -27,22 +27,8 @@ import BookingRow from '@/components/BookingRow'
 import { Avatar, Rating, StatTile } from '@/components/ui/Misc'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States'
 import { compactMoney, money, relative } from '@/lib/format'
+import { statusColors, useChartColors } from '@/lib/chartColors'
 
-/* Charts use the warm palette — never Recharts' default blue. */
-const CHART = {
-  accent: '#c2410c',
-  sage: '#4d7c6f',
-  gold: '#b45309',
-  rose: '#9f1239',
-  ink: '#78716c',
-}
-
-const statusColour = {
-  pending: CHART.gold,
-  confirmed: CHART.sage,
-  completed: CHART.ink,
-  cancelled: CHART.rose,
-}
 
 function ChartTooltip({ active, payload, label, formatter }) {
   if (!active || !payload?.length) return null
@@ -59,6 +45,8 @@ function ChartTooltip({ active, payload, label, formatter }) {
 
 export default function Dashboard() {
   const { user, isProvider } = useAuth()
+  const chart = useChartColors()
+  const statusColour = statusColors(chart)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -91,7 +79,7 @@ export default function Dashboard() {
           <p className="eyebrow mb-2">
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
-          <h1 className="text-3xl font-semibold text-ink sm:text-4xl">
+          <h1 className="text-3xl text-ink sm:text-4xl">
             {isProvider ? `Good to see you, ${firstName}.` : `Welcome back, ${firstName}.`}
           </h1>
           <p className="mt-2 text-sm text-muted">
@@ -199,7 +187,7 @@ export default function Dashboard() {
                   cursor={{ fill: 'var(--color-surface-sunk)' }}
                   content={<ChartTooltip formatter={(value) => money(value)} />}
                 />
-                <Bar dataKey="total" fill={CHART.accent} radius={[4, 4, 0, 0]} maxBarSize={44} />
+                <Bar dataKey="total" fill={chart.accent} radius={[4, 4, 0, 0]} maxBarSize={44} />
               </BarChart>
             </ResponsiveContainer>
           </div>
