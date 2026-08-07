@@ -42,7 +42,7 @@ export default function ServiceCard({ service, className = '' }) {
           </span>
 
           <span className="tabular absolute right-3 bottom-3 rounded-full border border-line/60 bg-surface/90 px-2.5 py-1 text-sm font-medium text-accent-ink backdrop-blur-md">
-            {money(service.price, service.currency)}
+            {money(service.pricing?.total ?? service.price, service.currency)}
           </span>
         </div>
       </Link>

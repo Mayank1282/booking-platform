@@ -8,6 +8,8 @@ use App\Http\Resources\BookingResource;
 use App\Http\Resources\PaymentResource;
 use App\Models\Booking;
 use App\Services\PaymentService;
+use App\Services\RazorpayService;
+use App\Support\Pricing;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,14 +18,48 @@ class PaymentController extends Controller
 {
     use ApiResponse;
 
-    public function __construct(private readonly PaymentService $payments) {}
+    public function __construct(
+        private readonly PaymentService $payments,
+        private readonly RazorpayService $razorpay,
+    ) {}
 
-    /** Starts checkout for a booking and hands the client its payment secret. */
+    /**
+     * Starts a payment on the gateway the client picked.
+     *
+     * The same booking is a different total depending on the answer: Stripe
+     * settles this platform in USD and passes its card and conversion costs
+     * on, Razorpay settles INR natively and does not. So the choice is made
+     * here, server-side, and the amount is derived from it — never sent up by
+     * the browser.
+     */
     public function createIntent(Request $request, Booking $booking): JsonResponse
     {
         abort_unless($booking->client_id === $request->user()->id, 403, 'This booking does not belong to you.');
 
-        $result = $this->payments->createIntent($booking->load('service'));
+        $gateway = $request->string('gateway')->toString() ?: 'stripe';
+
+        abort_unless(
+            (bool) config("booking.payments.gateways.{$gateway}.enabled"),
+            422,
+            'That payment method is not available.'
+        );
+
+        $booking->load('service');
+
+        if ($gateway === 'razorpay') {
+            $result = $this->razorpay->createOrder($booking);
+
+            return $this->ok([
+                'payment' => new PaymentResource($result['payment']),
+                'gateway' => 'razorpay',
+                'order_id' => $result['order_id'],
+                'amount' => $result['amount'],
+                'currency' => $result['currency'],
+                'key' => $result['key'],
+            ], 'Payment ready.');
+        }
+
+        $result = $this->payments->createIntent($booking);
 
         return $this->ok([
             'payment' => new PaymentResource($result['payment']),
@@ -31,6 +67,84 @@ class PaymentController extends Controller
             'gateway' => $result['gateway'],
             'publishable_key' => $result['publishable_key'],
         ], 'Payment ready.');
+    }
+
+    /** Which gateways this client may choose between, and what each costs. */
+    public function gateways(Request $request, Booking $booking): JsonResponse
+    {
+        abort_unless($booking->client_id === $request->user()->id, 403, 'This booking does not belong to you.');
+
+        $base = Pricing::fromStored(
+            $booking->provider_amount,
+            $booking->platform_fee_amount,
+            0,
+            $booking->currency,
+            $booking->platform_fee_bps,
+        );
+
+        $options = [];
+
+        foreach ((array) config('booking.payments.gateways') as $name => $config) {
+            if (! ($config['enabled'] ?? false)) {
+                continue;
+            }
+
+            $priced = $base->withProcessingFor($name);
+
+            $options[] = [
+                'gateway' => $name,
+                'label' => $config['label'] ?? ucfirst($name),
+                'pricing' => $priced->toArray(),
+            ];
+        }
+
+        return $this->ok($options);
+    }
+
+    /**
+     * Confirms a Razorpay checkout from the browser's handshake.
+     *
+     * The signature is what makes this trustworthy: it is HMAC'd from
+     * `order_id|payment_id` with the API secret, so a forged payment id cannot
+     * produce a valid one. Without this check anyone could confirm a booking
+     * nobody paid for.
+     */
+    public function confirmRazorpay(Request $request, Booking $booking): JsonResponse
+    {
+        abort_unless($booking->client_id === $request->user()->id, 403, 'This booking does not belong to you.');
+
+        $data = $request->validate([
+            'razorpay_order_id' => ['required', 'string'],
+            'razorpay_payment_id' => ['required', 'string'],
+            'razorpay_signature' => ['required', 'string'],
+        ]);
+
+        $valid = $this->razorpay->verifyCheckoutSignature(
+            $data['razorpay_order_id'],
+            $data['razorpay_payment_id'],
+            $data['razorpay_signature'],
+        );
+
+        abort_unless($valid, 422, 'That payment could not be verified.');
+
+        $payment = $booking->payment;
+
+        abort_unless(
+            $payment && $payment->reference === $data['razorpay_order_id'],
+            422,
+            'That payment does not belong to this booking.'
+        );
+
+        $payment->update(['charge_reference' => $data['razorpay_payment_id']]);
+
+        // Settling confirms the booking, exactly as the Stripe path does. The
+        // webhook may also arrive; both are idempotent.
+        $this->payments->markSucceeded($payment->fresh());
+
+        return $this->ok([
+            'payment' => new PaymentResource($payment->fresh()),
+            'booking' => new BookingResource($booking->fresh(['service', 'provider', 'payment'])),
+        ], 'Payment received — your booking is confirmed.');
     }
 
     /**

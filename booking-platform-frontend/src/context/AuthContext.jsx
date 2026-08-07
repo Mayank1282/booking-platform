@@ -59,6 +59,17 @@ export function AuthProvider({ children }) {
     setUser(null)
   }, [])
 
+  /** Re-reads the signed-in user, e.g. after Stripe onboarding completes. */
+  const refresh = useCallback(async () => {
+    try {
+      const { data } = await api.get('/auth/me')
+      setUser(data.data)
+      return data.data
+    } catch {
+      return null
+    }
+  }, [])
+
   const value = useMemo(
     () => ({
       user,
@@ -67,11 +78,12 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
+      refresh,
       isAuthenticated: Boolean(user),
       isProvider: user?.role === 'provider',
       isClient: user?.role === 'client',
     }),
-    [user, loading, login, register, logout],
+    [user, loading, login, register, logout, refresh],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

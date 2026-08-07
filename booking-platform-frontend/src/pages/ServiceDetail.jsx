@@ -268,9 +268,18 @@ export default function ServiceDetail() {
                   <div className="flex items-end justify-between gap-3">
                     <div>
                       <p className="eyebrow mb-1">Price</p>
+                      {/* The total, including the booking fee. Quoting the
+                          provider's own price here would mean the number on
+                          the checkout screen went up without explanation. */}
                       <p className="tabular text-3xl font-semibold text-accent">
-                        {money(service.price, service.currency)}
+                        {money(service.pricing?.total ?? service.price, service.currency)}
                       </p>
+                      {service.pricing?.platform_fee > 0 && (
+                        <p className="tabular mt-1 text-xs text-muted">
+                          {money(service.pricing.provider_amount, service.currency)} + {' '}
+                          {money(service.pricing.platform_fee, service.currency)} booking fee
+                        </p>
+                      )}
                     </div>
                     <p className="tabular flex items-center gap-1.5 text-sm text-muted">
                       <Timer size={14} aria-hidden="true" />

@@ -9,9 +9,11 @@ use App\Http\Requests\UpdateProfileRequest;
 use App\Http\Resources\UserResource;
 use App\Models\ProviderProfile;
 use App\Models\User;
+use App\Services\StripeConnectService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
@@ -22,6 +24,8 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
     use ApiResponse;
+
+    public function __construct(private readonly StripeConnectService $connect) {}
 
     /**
      * Registering as a provider also creates the provider profile, so a new
@@ -58,10 +62,24 @@ class AuthController extends Controller
             return $user;
         });
 
+        /*
+         * Give the account its Stripe identity straight away — a Customer for
+         * a client (the payer side), a connected account for a provider (the
+         * paid side).
+         *
+         * Deliberately outside the transaction and deliberately unable to fail
+         * the request: a Stripe outage must never stop somebody signing up.
+         * Both calls are idempotent, so anything that fails here is simply
+         * created the next time it is needed.
+         */
+        $user->isProvider()
+            ? $this->connect->ensureAccount($user)
+            : $this->connect->ensureCustomer($user);
+
         $user->load('providerProfile');
 
         return $this->created([
-            'user' => new UserResource($user),
+            'user' => new UserResource($user->fresh('providerProfile')),
             'token' => $user->createToken('api')->plainTextToken,
         ], 'Welcome aboard.');
     }
@@ -84,10 +102,27 @@ class AuthController extends Controller
             ]);
         }
 
+        /*
+         * Backfill the Stripe identity on the way in.
+         *
+         * Registration creates it, but accounts that predate that — seeded
+         * demo providers, anyone who signed up while Stripe was down — would
+         * otherwise have nothing to attach a payout to. Both calls are
+         * idempotent and no-op when the identity already exists, so this costs
+         * one cheap check per login and guarantees the dashboard always has
+         * something real to gate on.
+         *
+         * Failures are swallowed inside the service: not being able to reach
+         * Stripe must never stop someone signing in.
+         */
+        $user->isProvider()
+            ? $this->connect->ensureAccount($user)
+            : $this->connect->ensureCustomer($user);
+
         $user->load('providerProfile');
 
         return $this->ok([
-            'user' => new UserResource($user),
+            'user' => new UserResource($user->fresh('providerProfile')),
             'token' => $user->createToken('api')->plainTextToken,
         ], 'Signed in.');
     }
@@ -111,8 +146,9 @@ class AuthController extends Controller
     public function updateProfile(UpdateProfileRequest $request): JsonResponse
     {
         $user = $request->user();
+        $addressFrozen = $user->isProvider() && $this->hasLockedInheritingBookings($user);
 
-        DB::transaction(function () use ($request, $user) {
+        DB::transaction(function () use ($request, $user, $addressFrozen) {
             $user->fill($request->only(['name', 'email', 'phone', 'timezone']));
 
             if ($request->hasFile('avatar')) {
@@ -132,6 +168,19 @@ class AuthController extends Controller
                     'state', 'country', 'postal_code', 'latitude', 'longitude', 'is_published',
                 ]);
 
+                /*
+                 * Services without their own address inherit this one, so
+                 * editing it moves them. Apply the same freeze: while any
+                 * inheriting service still owes a client an appointment, the
+                 * address fields are dropped and the rest of the profile saves.
+                 */
+                if ($addressFrozen) {
+                    $profileData = Arr::except($profileData, [
+                        'address_line', 'city', 'state', 'country', 'postal_code',
+                        'latitude', 'longitude',
+                    ]);
+                }
+
                 if ($profile) {
                     $profile->update($profileData);
                 } elseif ($request->filled('business_name')) {
@@ -145,7 +194,9 @@ class AuthController extends Controller
 
         return $this->ok(
             new UserResource($user->fresh('providerProfile')),
-            'Profile updated.'
+            $addressFrozen
+                ? 'Profile updated. Your address was left as it is — clients still have appointments booked there.'
+                : 'Profile updated.'
         );
     }
 
@@ -201,6 +252,15 @@ class AuthController extends Controller
         return $status === Password::PASSWORD_RESET
             ? $this->ok(null, 'Password reset. You can sign in now.')
             : $this->fail(__($status), 422);
+    }
+
+    /**
+     * True when any service that inherits this provider's address still owes a
+     * client an appointment. A service with its own address is unaffected.
+     */
+    private function hasLockedInheritingBookings(User $user): bool
+    {
+        return $user->providerProfile?->lockedByInheritingBookings() ?? false;
     }
 
     private function uniqueSlug(string $value): string

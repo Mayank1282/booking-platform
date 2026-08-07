@@ -13,21 +13,27 @@ class BookingConfirmed extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public Booking $booking) {}
+    public function __construct(
+        public Booking $booking,
+        public bool $forProvider = false,
+    ) {}
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Your booking is confirmed — {$this->booking->code}",
+            subject: $this->forProvider
+                ? "Booking paid and confirmed — {$this->booking->code}"
+                : "Your booking is confirmed — {$this->booking->code}",
         );
     }
 
     public function content(): Content
     {
         return new Content(
-            markdown: 'mail.bookings.confirmed',
+            view: 'mail.bookings.confirmed',
             with: [
                 'booking' => $this->booking,
+                'forProvider' => $this->forProvider,
                 'frontendUrl' => rtrim(config('app.frontend_url'), '/'),
             ],
         );

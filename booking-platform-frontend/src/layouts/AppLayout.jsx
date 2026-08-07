@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import Logo from '@/components/Logo'
 import ThemeToggle from '@/components/ThemeToggle'
+import PayoutGate from '@/components/provider/PayoutGate'
 import { Avatar } from '@/components/ui/Misc'
 import { useAuth } from '@/context/AuthContext'
 
@@ -138,6 +139,8 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-dvh lg:flex">
+      {/* Providers cannot use the dashboard until Stripe can pay them. */}
+      <PayoutGate />
       {/* Desktop: fixed sidebar */}
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-line bg-surface lg:flex">
         {sidebarBody}

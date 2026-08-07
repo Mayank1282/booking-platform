@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { KeyRound, Save, UserRound } from 'lucide-react'
+import { KeyRound, Lock, Save, UserRound } from 'lucide-react'
 import api, { errorMessage, fieldErrors } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import Button from '@/components/ui/Button'
@@ -12,6 +12,11 @@ import LocationPicker from '@/components/map/LocationPicker'
 export default function Settings() {
   const { user, setUser, isProvider } = useAuth()
   const profile = user?.provider_profile
+
+  // Set while a service that inherits this address still owes a client an
+  // appointment. The server drops the address fields regardless; hiding them
+  // here is what stops it looking like a silent failure.
+  const addressLocked = Boolean(profile?.location_locked)
 
   const [form, setForm] = useState({
     name: user?.name ?? '',
@@ -192,6 +197,24 @@ export default function Settings() {
                       pinned publicly.
                     </p>
 
+                    {addressLocked ? (
+                      /*
+                        Services without an address of their own sit here, and
+                        clients booked them at this place. Read-only until every
+                        one of those appointments is completed or cancelled.
+                      */
+                      <div className="space-y-3">
+                        <p className="flex items-start gap-2.5 rounded-[var(--radius-inner)] border border-line bg-surface-sunk p-3.5 text-sm text-ink-soft">
+                          <Lock size={15} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" />
+                          <span>
+                            Your address is locked — clients still have appointments booked here. It
+                            can change once every one of those bookings is completed or cancelled.
+                            Give a single service its own address instead if only that one has moved.
+                            <span className="mt-1 block text-ink">{profile?.formatted_address}</span>
+                          </span>
+                        </p>
+                      </div>
+                    ) : (
                     <div className="space-y-4">
                       <Input
                         label="Address"
@@ -227,6 +250,7 @@ export default function Settings() {
                         onAddressFound={(address) => setForm((prev) => ({ ...prev, ...address }))}
                       />
                     </div>
+                    )}
                   </div>
                 </>
               )}

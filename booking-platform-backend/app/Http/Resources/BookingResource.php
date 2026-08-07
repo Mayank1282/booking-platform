@@ -19,7 +19,26 @@ class BookingResource extends JsonResource
             'ends_at' => $this->ends_at->toIso8601String(),
             'duration_minutes' => $this->duration_minutes,
 
+            // What the client pays. Kept under the original key so nothing
+            // that already reads it has to change.
             'price_amount' => (float) $this->price_amount,
+
+            /*
+             * How that total divides. Frozen at booking time, so it is the
+             * split both sides actually agreed to — not today's rate.
+             */
+            'pricing' => [
+                'total' => (float) $this->price_amount,
+                'provider_amount' => (float) $this->provider_amount,
+                'platform_fee' => (float) $this->platform_fee_amount,
+                // Zero until the client picks a gateway; only gateways that
+                // pass their cost on (Stripe) ever set it.
+                'processing_fee' => (float) $this->processing_fee_amount,
+                // What a cancellation returns: everything but the processing.
+                'refundable' => (float) $this->provider_amount + (float) $this->platform_fee_amount,
+                'fee_percent' => $this->platform_fee_bps / 100,
+                'currency' => $this->currency,
+            ],
             'currency' => $this->currency,
             'notes' => $this->notes,
 

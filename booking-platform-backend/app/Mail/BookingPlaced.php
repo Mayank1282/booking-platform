@@ -23,14 +23,14 @@ class BookingPlaced extends Mailable
         return new Envelope(
             subject: $this->forProvider
                 ? "New booking request — {$this->booking->service->title}"
-                : "We received your booking — {$this->booking->code}",
+                : "We are holding your slot — {$this->booking->code}",
         );
     }
 
     public function content(): Content
     {
         return new Content(
-            markdown: 'mail.bookings.placed',
+            view: 'mail.bookings.placed',
             with: [
                 'booking' => $this->booking,
                 'forProvider' => $this->forProvider,

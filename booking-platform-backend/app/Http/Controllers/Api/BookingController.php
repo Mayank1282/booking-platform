@@ -14,6 +14,7 @@ use App\Traits\ApiResponse;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class BookingController extends Controller
 {
@@ -108,20 +109,38 @@ class BookingController extends Controller
 
         $request->validate(['reason' => ['nullable', 'string', 'max:300']]);
 
-        $booking = $this->bookings->cancel($booking, $request->user(), $request->input('reason'));
+        /*
+         * Cancelling and refunding must succeed or fail together.
+         *
+         * They used to run in sequence: the booking was cancelled, then the
+         * refund attempted. When the gateway rejected the refund, the
+         * cancellation had already been committed — leaving a booking marked
+         * Cancelled with the client's money still taken. The client loses both
+         * the appointment and the payment, and nothing in the system flags it.
+         *
+         * The transaction rolls the cancellation back if the money cannot be
+         * returned, so the booking stays live and the client can retry rather
+         * than being quietly left out of pocket.
+         */
+        $booking = DB::transaction(function () use ($booking, $request) {
+            $booking = $this->bookings->cancel($booking, $request->user(), $request->input('reason'));
 
-        $payment = $booking->payment;
+            $payment = $booking->payment;
 
-        if ($payment) {
-            if ($payment->status === PaymentStatus::Succeeded) {
-                // Money actually changed hands — give it back.
-                $this->payments->refund($payment);
-            } else {
-                // Nothing was charged. Void the open intent so it cannot be
-                // paid later, and stop the record sitting at "pending" forever.
-                $this->payments->voidUnpaidIntent($payment);
+            if ($payment) {
+                if ($payment->status === PaymentStatus::Succeeded) {
+                    // Money actually changed hands — give it back. A failure
+                    // here throws, and the cancellation above is undone.
+                    $this->payments->refund($payment);
+                } else {
+                    // Nothing was charged. Void the open intent so it cannot be
+                    // paid later, and stop the record sitting at "pending" forever.
+                    $this->payments->voidUnpaidIntent($payment);
+                }
             }
-        }
+
+            return $booking;
+        });
 
         return $this->ok(
             new BookingResource($booking->fresh(['service.category', 'client', 'provider', 'payment', 'canceller:id,name'])),

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\UserRole;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -18,6 +19,18 @@ class UserResource extends JsonResource
             'avatar_url' => $this->avatarUrl(),
             'timezone' => $this->timezone,
             'provider_profile' => new ProviderProfileResource($this->whenLoaded('providerProfile')),
+
+            /*
+             * A provider cannot be paid until Stripe has verified them and
+             * their bank details are on file. The dashboard blocks on this, so
+             * it travels with the user rather than costing a second request on
+             * every page.
+             */
+            'payouts_ready' => $this->when(
+                $this->role === UserRole::Provider,
+                fn () => (bool) $this->providerProfile?->stripe_payouts_enabled
+            ),
+
             'created_at' => $this->created_at?->toIso8601String(),
         ];
     }

@@ -117,7 +117,7 @@ export default function ServiceMap({
       id: service.id,
       slug: service.slug,
       title: service.title,
-      price: service.price,
+      price: service.pricing?.total ?? service.price,
       currency: service.currency,
       rating: service.rating_avg,
       ratingCount: service.rating_count,

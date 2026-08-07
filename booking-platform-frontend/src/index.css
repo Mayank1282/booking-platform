@@ -111,6 +111,25 @@
     }
   }
 
+  /*
+    Tailwind v4's reset gives buttons `cursor: default`. Anything you can click
+    should say so, and mixing the two — a link that points, a button next to it
+    that does not — reads as the button being dead. Disabled controls keep the
+    not-allowed cursor.
+  */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  label:has(> input[type='checkbox']:not(:disabled)),
+  label:has(> input[type='radio']:not(:disabled)),
+  summary {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role='button'][aria-disabled='true'] {
+    cursor: not-allowed;
+  }
+
   body {
     background-color: var(--color-canvas);
     color: var(--color-ink);

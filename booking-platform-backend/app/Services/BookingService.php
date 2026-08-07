@@ -10,6 +10,7 @@ use App\Mail\BookingPlaced;
 use App\Models\Booking;
 use App\Models\Service;
 use App\Models\User;
+use App\Support\Pricing;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -51,6 +52,17 @@ class BookingService
                 throw BookingException::slotUnavailable();
             }
 
+            /*
+             * The split is computed once, here, and frozen onto the booking.
+             *
+             * The provider named a price; the client pays that plus the
+             * platform's commission. Storing all three means a later change to
+             * the commission rate cannot re-price an appointment already
+             * agreed — and a refund years from now still knows exactly how the
+             * money was divided.
+             */
+            $split = Pricing::fromProviderAmount($service->price, $service->currency);
+
             $booking = Booking::create([
                 // Replaced with the id-derived code below; unique and collision-free.
                 'code' => 'TMP-'.Str::uuid()->toString(),
@@ -62,7 +74,12 @@ class BookingService
                 'duration_minutes' => $service->duration_minutes,
                 // Snapshot the price so later edits to the service do not
                 // retroactively change what this client agreed to pay.
-                'price_amount' => $service->price,
+                'price_amount' => $split->total(),
+                'provider_amount' => $split->providerAmount(),
+                'platform_fee_amount' => $split->platformFee(),
+                // Set at checkout, once the client picks a gateway.
+                'processing_fee_amount' => 0,
+                'platform_fee_bps' => $split->feeBps,
                 'currency' => $service->currency,
                 'status' => BookingStatus::Pending,
                 // A hold, not a booking. It reserves the slot only long enough
@@ -114,8 +131,12 @@ class BookingService
             'expires_at' => null,
         ]);
 
-        $booking->load(['service', 'provider', 'client']);
+        $booking->load(['service', 'provider', 'client', 'payment']);
+
+        // Both sides get told. The client needs the receipt; the provider needs
+        // to know the slot is now paid for and can no longer be released.
         $this->mail($booking->client->email, new BookingConfirmed($booking));
+        $this->mail($booking->provider->email, new BookingConfirmed($booking, forProvider: true));
 
         return $booking;
     }
@@ -175,13 +196,16 @@ class BookingService
             'cancellation_reason' => $reason,
         ]);
 
-        $booking->load(['service', 'provider', 'client']);
+        $booking->load(['service', 'provider', 'client', 'payment']);
 
-        // Notify whichever party did not press the button.
-        $this->mail(
-            $isClient ? $booking->provider->email : $booking->client->email,
-            new BookingCancelled($booking, $actor)
-        );
+        /*
+         * Both sides are told, including whoever pressed the button — a
+         * cancellation is the one event where a written record on both ends
+         * matters, and the copy is written from each recipient's point of view
+         * so neither is left guessing who called it off.
+         */
+        $this->mail($booking->client->email, new BookingCancelled($booking, $actor));
+        $this->mail($booking->provider->email, new BookingCancelled($booking, $actor, forProvider: true));
 
         return $booking;
     }

@@ -5,11 +5,14 @@ namespace App\Services;
 use App\Enums\BookingStatus;
 use App\Enums\PaymentStatus;
 use App\Exceptions\BookingException;
+use App\Mail\BookingCancelled;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -71,7 +74,7 @@ class AdminService
             throw new BookingException('That account has already been erased.', 422);
         }
 
-        return DB::transaction(function () use ($user) {
+        return DB::transaction(function () use ($user, $actor) {
             $summary = ['cancelled' => 0, 'refunded' => 0];
 
             $upcoming = Booking::query()
@@ -85,9 +88,15 @@ class AdminService
                 $booking->update([
                     'status' => BookingStatus::Cancelled,
                     'cancelled_at' => now(),
+                    'cancelled_by' => $actor->id,
                     'cancellation_reason' => 'The account associated with this booking was closed.',
                 ]);
                 $summary['cancelled']++;
+
+                // Only the counterparty is told. The erased account's address
+                // is about to be released, so mail to it would bounce — and
+                // they asked for this in the first place.
+                $this->notifyCounterparty($booking, $user, $actor);
 
                 if ($booking->payment?->status === PaymentStatus::Succeeded) {
                     $this->payments->refund($booking->payment);
@@ -158,6 +167,33 @@ class AdminService
     }
 
     /** Admin accounts must never be able to lock themselves out entirely. */
+    /**
+     * Tells the other side of a booking that an account closure cancelled it.
+     * An outage here must not roll back the erasure — the user asked for it,
+     * and it has to complete.
+     */
+    private function notifyCounterparty(Booking $booking, User $erased, User $actor): void
+    {
+        $booking->load(['service.provider.providerProfile', 'provider', 'client']);
+
+        $isProvider = $booking->provider_id !== $erased->id;
+        $recipient = $isProvider ? $booking->provider : $booking->client;
+
+        if (! $recipient || $recipient->id === $erased->id) {
+            return;
+        }
+
+        try {
+            Mail::to($recipient->email)->send(new BookingCancelled($booking, $actor, forProvider: $isProvider));
+        } catch (\Throwable $e) {
+            Log::warning('Account-closure cancellation mail failed to send', [
+                'booking_id' => $booking->id,
+                'to' => $recipient->email,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
     private function assertNotLastAdmin(User $user, string $action): void
     {
         if (! $user->isAdmin()) {

@@ -30,6 +30,8 @@ const MapExplore = lazy(() => import('@/pages/MapExplore'))
 const DashboardHome = lazy(() => import('@/pages/app/DashboardHome'))
 const BookingDetail = lazy(() => import('@/pages/app/BookingDetail'))
 const Settings = lazy(() => import('@/pages/app/Settings'))
+// Carries the map, so it is split away from the services list.
+const ProviderServiceForm = lazy(() => import('@/pages/app/ProviderServiceForm'))
 
 // Admin is a small audience — no reason to ship it to everyone else.
 const AdminUsers = lazy(() => import('@/pages/app/admin/AdminUsers'))
@@ -69,6 +71,8 @@ export default function App() {
 
             <Route element={<RequireRole role="provider" />}>
               <Route path="services" element={<ProviderServices />} />
+              <Route path="services/new" element={<ProviderServiceForm />} />
+              <Route path="services/:slug/edit" element={<ProviderServiceForm />} />
               <Route path="availability" element={<ProviderAvailability />} />
               <Route path="reviews" element={<ProviderReviews />} />
             </Route>

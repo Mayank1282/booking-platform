@@ -19,7 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         // Stripe signs the raw request body, so it must not be tampered with.
-        $middleware->validateCsrfTokens(except: ['api/webhooks/stripe']);
+        $middleware->validateCsrfTokens(except: ['api/webhooks/stripe', 'api/webhooks/razorpay']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

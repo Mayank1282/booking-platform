@@ -15,7 +15,7 @@ import { money } from '@/lib/format'
   Card details are entered inside Stripe's own iframe, so they never touch this
   application or its server.
 */
-export default function StripeCheckout({ booking, onPaid, onError }) {
+export default function StripeCheckout({ booking, amount, onPaid, onError }) {
   const stripe = useStripe()
   const elements = useElements()
 
@@ -88,7 +88,11 @@ export default function StripeCheckout({ booking, onPaid, onError }) {
         disabled={!stripe || !elements}
         className="w-full"
       >
-        Pay {money(booking.price_amount, booking.currency)}
+        {/* Quote the amount this gateway will actually charge. The booking
+            row holds whatever gateway priced it last, so it reads ₹880 the
+            moment the client has looked at Razorpay — while Stripe charges
+            ₹953.12. */}
+        Pay {money(amount ?? booking.price_amount, booking.currency)}
       </Button>
 
       <p className="text-center text-xs text-muted">

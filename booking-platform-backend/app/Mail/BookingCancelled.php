@@ -17,6 +17,7 @@ class BookingCancelled extends Mailable
     public function __construct(
         public Booking $booking,
         public User $cancelledBy,
+        public bool $forProvider = false,
     ) {}
 
     public function envelope(): Envelope
@@ -29,10 +30,11 @@ class BookingCancelled extends Mailable
     public function content(): Content
     {
         return new Content(
-            markdown: 'mail.bookings.cancelled',
+            view: 'mail.bookings.cancelled',
             with: [
                 'booking' => $this->booking,
                 'cancelledBy' => $this->cancelledBy,
+                'forProvider' => $this->forProvider,
                 'frontendUrl' => rtrim(config('app.frontend_url'), '/'),
             ],
         );

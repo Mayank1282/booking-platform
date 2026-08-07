@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\PayoutController;
+use App\Http\Controllers\Api\RazorpayWebhookController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\ServiceController;
@@ -37,6 +39,7 @@ Route::get('/services/{service}/availability/month', [AvailabilityController::cl
 
 // Authenticated by Stripe's signature header rather than a session token.
 Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle']);
+Route::post('/webhooks/razorpay', [RazorpayWebhookController::class, 'handle']);
 
 /*
 |--------------------------------------------------------------------------
@@ -66,7 +69,9 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
      */
     Route::middleware('role:client')->group(function () {
         Route::post('/bookings', [BookingController::class, 'store']);
+        Route::get('/bookings/{booking}/pay/gateways', [PaymentController::class, 'gateways']);
         Route::post('/bookings/{booking}/pay', [PaymentController::class, 'createIntent']);
+        Route::post('/bookings/{booking}/pay/razorpay', [PaymentController::class, 'confirmRazorpay']);
         Route::post('/bookings/{booking}/pay/simulate', [PaymentController::class, 'simulate']);
         Route::get('/bookings/{booking}/pay/status', [PaymentController::class, 'syncStatus']);
         Route::post('/bookings/{booking}/review', [ReviewController::class, 'store']);
@@ -77,9 +82,15 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
      */
     Route::middleware('role:provider')->prefix('provider')->group(function () {
         Route::get('/services', [ServiceController::class, 'mine']);
+        Route::get('/services/{service}', [ServiceController::class, 'showMine']);
         Route::post('/services', [ServiceController::class, 'store']);
         Route::post('/services/{service}', [ServiceController::class, 'update']); // POST for multipart image uploads
         Route::delete('/services/{service}', [ServiceController::class, 'destroy']);
+
+        // Where this provider's share of each booking is paid out.
+        Route::get('/payouts', [PayoutController::class, 'show']);
+        Route::post('/payouts/onboarding', [PayoutController::class, 'onboarding']);
+        Route::post('/payouts/dashboard', [PayoutController::class, 'dashboard']);
 
         Route::get('/availability/rules', [AvailabilityController::class, 'rules']);
         Route::put('/availability/rules', [AvailabilityController::class, 'saveRules']);

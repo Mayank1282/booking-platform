@@ -69,9 +69,19 @@ class ServiceController extends Controller
                     $latDelta = $radius / 111;
                     $lngDelta = $radius / max(111 * cos(deg2rad($lat)), 0.000001);
 
-                    $q->whereHas('provider.providerProfile', fn ($p) => $p
-                        ->whereBetween('latitude', [$lat - $latDelta, $lat + $latDelta])
-                        ->whereBetween('longitude', [$lng - $lngDelta, $lng + $lngDelta]));
+                    // A service with its own coordinates is matched on those;
+                    // one without inherits the provider's.
+                    $q->where(function ($outer) use ($lat, $lng, $latDelta, $lngDelta) {
+                        $outer->where(fn ($own) => $own
+                            ->whereNotNull('services.latitude')
+                            ->whereBetween('services.latitude', [$lat - $latDelta, $lat + $latDelta])
+                            ->whereBetween('services.longitude', [$lng - $lngDelta, $lng + $lngDelta]))
+                            ->orWhere(fn ($inherited) => $inherited
+                                ->whereNull('services.latitude')
+                                ->whereHas('provider.providerProfile', fn ($p) => $p
+                                    ->whereBetween('latitude', [$lat - $latDelta, $lat + $latDelta])
+                                    ->whereBetween('longitude', [$lng - $lngDelta, $lng + $lngDelta])));
+                    });
                 }
             )
             ->tap(fn ($q) => $this->applySort($q, $request->string('sort')->toString()))
@@ -113,11 +123,29 @@ class ServiceController extends Controller
         $services = $request->user()
             ->services()
             ->with(['category', 'provider.providerProfile'])
+            // Drives the "address is locked" notice on the edit form without a
+            // count query per row.
+            ->withCount(['bookings as outstanding_bookings_count' => fn ($q) => $q->blocking()])
             ->when($request->filled('q'), fn ($q) => $q->search($request->string('q')->toString()))
             ->latest()
             ->paginate(min((int) $request->integer('per_page', 12), 48));
 
         return $this->paginated(ServiceResource::collection($services));
+    }
+
+    /**
+     * One of the provider's own services, including inactive ones — the public
+     * `show` hides those, and the edit form still has to load them.
+     */
+    public function showMine(Request $request, Service $service): JsonResponse
+    {
+        $this->authorizeOwnership($request, $service);
+
+        $service->loadCount(['bookings as outstanding_bookings_count' => fn ($q) => $q->blocking()]);
+
+        return $this->ok(new ServiceResource(
+            $service->load(['category', 'provider.providerProfile'])
+        ));
     }
 
     public function store(ServiceRequest $request): JsonResponse
@@ -144,6 +172,23 @@ class ServiceController extends Controller
         $this->authorizeOwnership($request, $service);
 
         $data = $request->safe()->except('image');
+
+        /*
+         * The address is frozen while clients are still owed appointments.
+         * They booked a specific place; letting the provider move it after
+         * money changed hands would strand them somewhere they never agreed to.
+         * It unlocks once every outstanding booking is completed or cancelled.
+         */
+        if ($service->locationWouldChange($data) && $service->locationIsLocked()) {
+            $count = $service->outstandingBookingsCount();
+
+            return $this->fail(
+                "This service has {$count} booking".($count === 1 ? '' : 's')
+                ." still to be delivered, so its address is locked. You can change it once "
+                ."those appointments are completed or cancelled.",
+                422
+            );
+        }
 
         if ($request->hasFile('image')) {
             if ($service->image_path) {

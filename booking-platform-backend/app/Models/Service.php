@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 #[Fillable([
     'provider_id', 'category_id', 'title', 'slug', 'description', 'image_path',
     'duration_minutes', 'buffer_minutes', 'price', 'currency', 'location_type', 'is_active',
+    'address_line', 'city', 'state', 'postal_code', 'latitude', 'longitude',
 ])]
 class Service extends Model
 {
@@ -32,6 +33,8 @@ class Service extends Model
             'bookings_count' => 'integer',
             'is_active' => 'boolean',
             'location_type' => LocationType::class,
+            'latitude' => 'float',
+            'longitude' => 'float',
         ];
     }
 
@@ -105,6 +108,51 @@ class Service extends Model
 
     // --- Helpers ----------------------------------------------------------
 
+    /**
+     * Where this service actually happens.
+     *
+     * A service may carry its own address; when it does not, it falls back to
+     * the provider's profile. Callers should never read the raw columns — a
+     * blank service address means "inherit", not "no location".
+     *
+     * @return array{address_line: ?string, city: ?string, state: ?string, postal_code: ?string, latitude: ?float, longitude: ?float, formatted: ?string, source: string}
+     */
+    public function effectiveLocation(): array
+    {
+        $ownsCoordinates = $this->latitude !== null && $this->longitude !== null;
+        $profile = $this->provider?->providerProfile;
+
+        if ($ownsCoordinates || filled($this->address_line) || filled($this->city)) {
+            return $this->locationPayload(
+                $this->address_line, $this->city, $this->state, $this->postal_code,
+                $this->latitude, $this->longitude, 'service'
+            );
+        }
+
+        return $this->locationPayload(
+            $profile?->address_line, $profile?->city, $profile?->state, $profile?->postal_code,
+            $profile?->latitude, $profile?->longitude, 'provider'
+        );
+    }
+
+    private function locationPayload(
+        ?string $address, ?string $city, ?string $state, ?string $postal,
+        ?float $lat, ?float $lng, string $source
+    ): array {
+        $parts = array_filter([$address, $city, $state, $postal]);
+
+        return [
+            'address_line' => $address,
+            'city' => $city,
+            'state' => $state,
+            'postal_code' => $postal,
+            'latitude' => $lat,
+            'longitude' => $lng,
+            'formatted' => $parts ? implode(', ', $parts) : null,
+            'source' => $source,
+        ];
+    }
+
     public function imageUrl(): ?string
     {
         return $this->image_path ? Storage::disk('public')->url($this->image_path) : null;
@@ -122,6 +170,50 @@ class Service extends Model
             ->whereIn('status', BookingStatus::blocking())
             ->where('starts_at', '>=', now())
             ->count();
+    }
+
+    /**
+     * Bookings that have been committed to but not yet delivered.
+     *
+     * Note this counts a confirmed booking whose time has already passed but
+     * which the provider has not marked completed. Someone paid to be at a
+     * particular address; moving it out from under them is not allowed until
+     * the appointment is actually done.
+     */
+    public function outstandingBookingsCount(): int
+    {
+        return $this->bookings()->blocking()->count();
+    }
+
+    /** The address is frozen while anyone is still owed an appointment. */
+    public function locationIsLocked(): bool
+    {
+        return $this->outstandingBookingsCount() > 0;
+    }
+
+    /** True when the given payload would move this service. */
+    public function locationWouldChange(array $data): bool
+    {
+        foreach (['address_line', 'city', 'state', 'postal_code'] as $field) {
+            if (array_key_exists($field, $data) && (string) $data[$field] !== (string) $this->{$field}) {
+                return true;
+            }
+        }
+
+        foreach (['latitude', 'longitude'] as $field) {
+            if (! array_key_exists($field, $data)) {
+                continue;
+            }
+
+            $new = $data[$field] === null || $data[$field] === '' ? null : round((float) $data[$field], 6);
+            $current = $this->{$field} === null ? null : round((float) $this->{$field}, 6);
+
+            if ($new !== $current) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function getRouteKeyName(): string

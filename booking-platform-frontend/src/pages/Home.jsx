@@ -65,7 +65,7 @@ function pickHeroBookings(services) {
   return pool.slice(0, 4).map((service) => ({
     title: service.title,
     provider: service.provider?.provider_profile?.business_name ?? service.provider?.name ?? '',
-    price: money(service.price, service.currency),
+    price: money(service.pricing?.total ?? service.price, service.currency),
   }))
 }
 

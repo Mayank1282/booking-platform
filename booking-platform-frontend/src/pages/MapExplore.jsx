@@ -154,7 +154,7 @@ export default function MapExplore() {
                       <div className="flex items-start justify-between gap-3">
                         <p className="min-w-0 text-sm font-medium text-ink">{service.title}</p>
                         <span className="tabular shrink-0 text-sm font-semibold text-accent">
-                          {money(service.price, service.currency)}
+                          {money(service.pricing?.total ?? service.price, service.currency)}
                         </span>
                       </div>
                       <p className="mt-1 truncate text-xs text-muted">

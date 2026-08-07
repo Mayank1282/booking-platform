@@ -14,7 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable([
     'code', 'client_id', 'provider_id', 'service_id',
     'starts_at', 'ends_at', 'duration_minutes',
-    'price_amount', 'currency', 'status', 'expires_at', 'notes',
+    'price_amount', 'provider_amount', 'platform_fee_amount', 'processing_fee_amount', 'platform_fee_bps',
+    'currency', 'status', 'expires_at', 'notes',
     'confirmed_at', 'completed_at', 'cancelled_at', 'cancelled_by', 'cancellation_reason',
 ])]
 class Booking extends Model
@@ -28,6 +29,10 @@ class Booking extends Model
             'ends_at' => 'datetime',
             'duration_minutes' => 'integer',
             'price_amount' => 'decimal:2',
+            'provider_amount' => 'decimal:2',
+            'platform_fee_amount' => 'decimal:2',
+            'processing_fee_amount' => 'decimal:2',
+            'platform_fee_bps' => 'integer',
             'status' => BookingStatus::class,
             'expires_at' => 'datetime',
             'confirmed_at' => 'datetime',

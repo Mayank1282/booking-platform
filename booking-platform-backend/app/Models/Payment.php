@@ -12,10 +12,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
-    'booking_id', 'client_id', 'provider_id', 'amount', 'currency',
+    'booking_id', 'client_id', 'provider_id', 'amount', 'application_fee_amount', 'processing_fee_amount', 'refundable_amount', 'currency',
     'status', 'gateway', 'reference', 'charge_reference', 'client_secret',
+    'destination_account', 'transfer_reference', 'transfer_amount', 'transfer_currency',
+    'settlement_currency', 'settlement_amount', 'exchange_rate', 'stripe_fee', 'net_amount',
     'receipt_url', 'failure_reason', 'paid_at',
-    'refunded_at', 'refund_reference', 'refund_amount', 'refund_reason', 'meta',
+    'refunded_at', 'refund_reference', 'refund_amount', 'application_fee_refunded',
+    'stripe_fee_refunded', 'transfer_reversed_amount', 'platform_net_amount',
+    'refund_reason', 'meta',
 ])]
 #[Hidden(['client_secret'])] // only ever handed back through the explicit intent endpoint
 class Payment extends Model
@@ -26,7 +30,19 @@ class Payment extends Model
     {
         return [
             'amount' => 'decimal:2',
+            'application_fee_amount' => 'decimal:2',
+            'processing_fee_amount' => 'decimal:2',
+            'refundable_amount' => 'decimal:2',
             'refund_amount' => 'decimal:2',
+            'application_fee_refunded' => 'decimal:2',
+            'settlement_amount' => 'decimal:2',
+            'exchange_rate' => 'decimal:8',
+            'stripe_fee' => 'decimal:2',
+            'net_amount' => 'decimal:2',
+            'transfer_amount' => 'decimal:2',
+            'stripe_fee_refunded' => 'decimal:2',
+            'transfer_reversed_amount' => 'decimal:2',
+            'platform_net_amount' => 'decimal:2',
             'status' => PaymentStatus::class,
             'paid_at' => 'datetime',
             'refunded_at' => 'datetime',

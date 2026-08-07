@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
+import { eachDayOfInterval, format, startOfDay } from 'date-fns'
 import { CalendarOff, Plus, Save, Trash2 } from 'lucide-react'
 import api, { errorMessage } from '@/lib/api'
 import Button from '@/components/ui/Button'
@@ -8,9 +9,19 @@ import Modal from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Field'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States'
 import { SectionTitle } from '@/components/ui/Misc'
-import { dateTime } from '@/lib/format'
+import DateRangeCalendar from '@/components/booking/DateRangeCalendar'
+import { dateTime, isoDay } from '@/lib/format'
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+const emptyBlock = {
+  start: null,
+  end: null,
+  allDay: true,
+  startTime: '09:00',
+  endTime: '17:00',
+  reason: '',
+}
 
 export default function ProviderAvailability() {
   const [rules, setRules] = useState([])
@@ -20,8 +31,8 @@ export default function ProviderAvailability() {
   const [saving, setSaving] = useState(false)
 
   const [blockOpen, setBlockOpen] = useState(false)
-  const [block, setBlock] = useState({ starts_at: '', ends_at: '', reason: '' })
   const [blockSaving, setBlockSaving] = useState(false)
+  const [block, setBlock] = useState(emptyBlock)
 
   const load = () => {
     setLoading(true)
@@ -37,6 +48,20 @@ export default function ProviderAvailability() {
   }
 
   useEffect(load, [])
+
+  // Days an existing block already covers, so the calendar can mark them.
+  const blockedDays = useMemo(() => {
+    const days = new Set()
+
+    blocks.forEach((entry) => {
+      eachDayOfInterval({
+        start: startOfDay(new Date(entry.starts_at)),
+        end: startOfDay(new Date(entry.ends_at)),
+      }).forEach((day) => days.add(isoDay(day)))
+    })
+
+    return days
+  }, [blocks])
 
   /* --- Weekly rules -------------------------------------------------- */
 
@@ -82,13 +107,29 @@ export default function ProviderAvailability() {
 
   const saveBlock = async (event) => {
     event.preventDefault()
+
+    if (!block.start) {
+      toast.error('Pick at least one day on the calendar.')
+      return
+    }
+
     setBlockSaving(true)
 
+    // A single tap blocks that one day; the calendar's end is inclusive, so a
+    // whole-day block runs to 23:59 rather than to midnight, which would spill
+    // into the following morning.
+    const last = block.end ?? block.start
+    const payload = {
+      starts_at: `${isoDay(block.start)}T${block.allDay ? '00:00' : block.startTime}`,
+      ends_at: `${isoDay(last)}T${block.allDay ? '23:59' : block.endTime}`,
+      reason: block.reason,
+    }
+
     try {
-      const { data } = await api.post('/provider/availability/blocks', block)
+      const { data } = await api.post('/provider/availability/blocks', payload)
       setBlocks((prev) => [...prev, data.data].sort((a, b) => a.starts_at.localeCompare(b.starts_at)))
       setBlockOpen(false)
-      setBlock({ starts_at: '', ends_at: '', reason: '' })
+      setBlock(emptyBlock)
       toast.success(data.message)
     } catch (requestError) {
       toast.error(errorMessage(requestError))
@@ -234,39 +275,72 @@ export default function ProviderAvailability() {
         onClose={() => setBlockOpen(false)}
         eyebrow="Time off"
         title="Block some dates"
-        size="sm"
         footer={
           <>
             <Button variant="ghost" onClick={() => setBlockOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" form="block-form" loading={blockSaving}>
+            <Button type="submit" form="block-form" loading={blockSaving} disabled={!block.start}>
               Block these dates
             </Button>
           </>
         }
       >
         <form id="block-form" onSubmit={saveBlock} className="space-y-4" noValidate>
-          <Input
-            label="From"
-            type="datetime-local"
-            required
-            value={block.starts_at}
-            onChange={(event) => setBlock((prev) => ({ ...prev, starts_at: event.target.value }))}
+          <DateRangeCalendar
+            start={block.start}
+            end={block.end}
+            blockedDays={blockedDays}
+            onChange={(start, end) => setBlock((prev) => ({ ...prev, start, end }))}
           />
-          <Input
-            label="Until"
-            type="datetime-local"
-            required
-            value={block.ends_at}
-            onChange={(event) => setBlock((prev) => ({ ...prev, ends_at: event.target.value }))}
-          />
+
+          <p className="tabular text-sm text-ink-soft">
+            {block.start
+              ? block.end && !isSameDayValue(block.start, block.end)
+                ? `${format(block.start, 'EEE d MMM')} → ${format(block.end, 'EEE d MMM yyyy')}`
+                : `${format(block.start, 'EEE d MMM yyyy')} — tap another day to block a range`
+              : 'Tap a day to start, then another to block a range.'}
+          </p>
+
+          <label className="flex cursor-pointer items-center gap-3 rounded-[var(--radius-inner)] border border-line p-3">
+            <input
+              type="checkbox"
+              checked={block.allDay}
+              onChange={(event) => setBlock((prev) => ({ ...prev, allDay: event.target.checked }))}
+              className="size-4 accent-[var(--color-accent)]"
+            />
+            <span>
+              <span className="block text-sm font-medium text-ink">Whole day</span>
+              <span className="block text-xs text-muted">
+                Uncheck to block only part of the day instead.
+              </span>
+            </span>
+          </label>
+
+          {!block.allDay && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input
+                label="From"
+                type="time"
+                value={block.startTime}
+                onChange={(event) => setBlock((prev) => ({ ...prev, startTime: event.target.value }))}
+              />
+              <Input
+                label="Until"
+                type="time"
+                value={block.endTime}
+                onChange={(event) => setBlock((prev) => ({ ...prev, endTime: event.target.value }))}
+              />
+            </div>
+          )}
+
           <Input
             label="Reason (optional)"
             value={block.reason}
             onChange={(event) => setBlock((prev) => ({ ...prev, reason: event.target.value }))}
             placeholder="Holiday, training, family"
           />
+
           <p className="text-xs text-muted">
             Existing bookings inside this range are not cancelled — block dates before they fill up.
           </p>
@@ -275,3 +349,5 @@ export default function ProviderAvailability() {
     </>
   )
 }
+
+const isSameDayValue = (a, b) => isoDay(a) === isoDay(b)

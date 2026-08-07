@@ -41,4 +41,19 @@ return [
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
     ],
 
+    'razorpay' => [
+        // The key id is public — the checkout widget needs it in the browser.
+        'key' => env('RAZORPAY_API_KEY'),
+        'secret' => env('RAZORPAY_SECRET_KEY'),
+
+        /*
+         * Unlike Stripe, Razorpay does not issue a webhook secret: whatever
+         * value you type into the dashboard's Secret field *is* the key, and
+         * it signs every payload in `X-Razorpay-Signature`. Leave it unset and
+         * webhooks cannot be verified at all — anyone who finds the URL could
+         * post a forged `payment.captured` and confirm an unpaid booking.
+         */
+        'webhook_secret' => env('RAZORPAY_WEBHOOK_SECRET'),
+    ],
+
 ];
