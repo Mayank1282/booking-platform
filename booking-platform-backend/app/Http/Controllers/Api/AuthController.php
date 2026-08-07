@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -226,7 +227,24 @@ class AuthController extends Controller
     {
         $request->validate(['email' => ['required', 'email']]);
 
-        Password::sendResetLink($request->only('email'));
+        /*
+         * The only mail path in the app that could reach the user as a 500.
+         * Every other send is already wrapped, because an SMTP outage must
+         * never take down the action that triggered it.
+         *
+         * Swallowing it costs nothing here: the response below is deliberately
+         * identical whether or not an account exists, so it is already opaque
+         * to the caller. A failure is logged for us instead of surfacing as a
+         * broken screen for someone who just wants to reset a password.
+         */
+        try {
+            Password::sendResetLink($request->only('email'));
+        } catch (\Throwable $e) {
+            Log::error('Password reset mail failed to send', [
+                'email' => $request->input('email'),
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         // Always answer the same way, whatever the outcome, so the endpoint
         // cannot be used to probe which email addresses have accounts.
