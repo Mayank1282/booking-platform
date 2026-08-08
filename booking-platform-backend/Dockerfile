@@ -45,7 +45,6 @@ RUN composer dump-autoload --optimize --no-dev --no-interaction \
 EXPOSE 10000
 
 # `sh -c` so $PORT expands. Render assigns it and it is not known until runtime.
-CMD php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan view:cache \
-    && php artisan serve --host 0.0.0.0 --port "${PORT:-10000}"
+# `migrate --force` runs on boot because the free tier has no shell to run it
+# by hand. It is idempotent — a deploy with nothing new to apply exits cleanly.
+CMD sh -c "php artisan migrate --force && php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan serve --host 0.0.0.0 --port ${PORT:-10000}"

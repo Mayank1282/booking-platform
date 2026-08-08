@@ -1,7 +1,6 @@
 # Never ship secrets or local state into the image.
 .env
 .env.*
-storage/certs/
 database/*.sqlite
 
 # Rebuilt inside the container.

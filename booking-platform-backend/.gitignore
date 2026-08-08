@@ -32,6 +32,3 @@ Thumbs.db
 /database/*.sqlite-journal
 /database/*.sqlite-shm
 /database/*.sqlite-wal
-
-# Aiven CA cert — kept local until the DB work is pushed deliberately
-storage/certs/
