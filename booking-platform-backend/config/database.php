@@ -60,7 +60,18 @@ return [
             'strict' => true,
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
-                Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                /*
+                 * Resolved against the project root, not the working directory.
+                 *
+                 * PHP's built-in server chdir's into public/ to serve a
+                 * request, and Render's process may start anywhere — so a
+                 * relative path here connects fine from artisan and then fails
+                 * with "Cannot connect to MySQL using SSL" over HTTP, which
+                 * looks like a credentials problem and is not.
+                 */
+                Mysql::ATTR_SSL_CA => ($ca = env('MYSQL_ATTR_SSL_CA'))
+                    ? (str_starts_with($ca, '/') || preg_match('/^[A-Za-z]:/', $ca) ? $ca : base_path($ca))
+                    : null,
             ]) : [],
         ],
 
@@ -80,7 +91,18 @@ return [
             'strict' => true,
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
-                Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                /*
+                 * Resolved against the project root, not the working directory.
+                 *
+                 * PHP's built-in server chdir's into public/ to serve a
+                 * request, and Render's process may start anywhere — so a
+                 * relative path here connects fine from artisan and then fails
+                 * with "Cannot connect to MySQL using SSL" over HTTP, which
+                 * looks like a credentials problem and is not.
+                 */
+                Mysql::ATTR_SSL_CA => ($ca = env('MYSQL_ATTR_SSL_CA'))
+                    ? (str_starts_with($ca, '/') || preg_match('/^[A-Za-z]:/', $ca) ? $ca : base_path($ca))
+                    : null,
             ]) : [],
         ],
 
