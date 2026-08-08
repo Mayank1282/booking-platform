@@ -1,0 +1,18 @@
+# Never ship secrets or local state into the image.
+.env
+.env.*
+storage/certs/
+database/*.sqlite
+
+# Rebuilt inside the container.
+vendor/
+node_modules/
+
+# Local noise.
+.git/
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+tests/
+.phpunit.result.cache
