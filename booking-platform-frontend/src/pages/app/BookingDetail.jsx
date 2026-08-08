@@ -130,7 +130,17 @@ export default function BookingDetail() {
 
   const isRemote = booking.service?.location_type === 'remote'
   const isActive = booking.status !== 'cancelled' && booking.status !== 'completed'
-  const needsPayment = !isProvider && booking.payment && booking.payment.status !== 'succeeded' && isActive
+  /*
+    Deliberately does NOT require a payment row to exist.
+
+    The gateway picker defers creating the intent until the client chooses a
+    method, so a booking where they opened checkout and pressed "Pay later"
+    has no payment at all. Requiring one hid the button on exactly those
+    bookings — leaving a held slot, a ticking hold timer, and no way to pay
+    for it.
+  */
+  const needsPayment =
+    !isProvider && isActive && booking.payment?.status !== 'succeeded'
 
   return (
     <>
@@ -162,7 +172,7 @@ export default function BookingDetail() {
         <div className="flex flex-wrap gap-2">
           {needsPayment && (
             <Button icon={CreditCard} onClick={() => setPayOpen(true)}>
-              {booking.payment.status === 'failed' ? 'Retry payment' : 'Complete payment'}
+              {booking.payment?.status === 'failed' ? 'Retry payment' : 'Complete payment'}
             </Button>
           )}
 
