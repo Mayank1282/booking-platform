@@ -11,12 +11,18 @@ FROM php:8.4-cli
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git unzip libzip-dev libpng-dev libjpeg-dev libfreetype6-dev libonig-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j"$(nproc)" pdo_mysql mbstring bcmath zip gd exif \
+    && docker-php-ext-install -j"$(nproc)" pdo_mysql mbstring bcmath zip gd exif opcache \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # pdo_mysql — Aiven.  bcmath — money arithmetic must not go through floats.
 # gd — generates the mail logo and service artwork.  zip/mbstring — Composer
 # and string handling.
+
+# OPcache is not on in the CLI image, so Laravel recompiles every file it
+# touches on every request. On Render's 0.1 CPU that dominates the response
+# time. validate_timestamps=0 skips the stat() on each file — safe because the
+# code cannot change without rebuilding the image.
+RUN {       echo 'opcache.enable=1';       echo 'opcache.enable_cli=0';       echo 'opcache.memory_consumption=128';       echo 'opcache.interned_strings_buffer=16';       echo 'opcache.max_accelerated_files=20000';       echo 'opcache.validate_timestamps=0';       echo 'realpath_cache_size=4096K';       echo 'realpath_cache_ttl=600';     } > /usr/local/etc/php/conf.d/opcache.ini
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
