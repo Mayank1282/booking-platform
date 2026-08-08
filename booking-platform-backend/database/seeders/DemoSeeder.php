@@ -54,7 +54,7 @@ class DemoSeeder extends Seeder
     private function createAdmin(): User
     {
         return User::updateOrCreate(
-            ['email' => 'admin@slotwise.test'],
+            ['email' => 'admin@yopmail.com'],
             [
                 'name' => 'Platform Admin',
                 'password' => 'password',
@@ -68,7 +68,7 @@ class DemoSeeder extends Seeder
     {
         $definitions = [
             [
-                'name' => 'Meera Rao', 'email' => 'provider@slotwise.test',
+                'name' => 'Meera Rao', 'email' => 'provider@yopmail.com',
                 'business' => 'Stillpoint Wellness Studio',
                 'headline' => 'Therapeutic massage and recovery, ten years in practice.',
                 'bio' => 'Stillpoint is a two-room studio focused on deep tissue work, sports recovery and prenatal massage. Every session begins with a short consultation so the pressure and focus match how your body actually feels that day.',
@@ -81,7 +81,7 @@ class DemoSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Arjun Kapoor', 'email' => 'arjun@slotwise.test',
+                'name' => 'Arjun Kapoor', 'email' => 'arjun@yopmail.com',
                 'business' => 'The Cutting Room',
                 'headline' => 'Precision cuts and colour in a small, unhurried salon.',
                 'bio' => 'A two-chair salon where appointments are spaced generously so nobody is rushed. Specialising in textured cuts, grey blending and low-maintenance colour.',
@@ -94,7 +94,7 @@ class DemoSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Priya Nair', 'email' => 'priya@slotwise.test',
+                'name' => 'Priya Nair', 'email' => 'priya@yopmail.com',
                 'business' => 'Groundwork Strength',
                 'headline' => 'Strength coaching for people who have never lifted before.',
                 'bio' => 'Certified strength and conditioning coach working with beginners, desk-bound professionals and post-injury clients. Sessions run one-to-one, in person or over video.',
@@ -107,7 +107,7 @@ class DemoSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Rahul Desai', 'email' => 'rahul@slotwise.test',
+                'name' => 'Rahul Desai', 'email' => 'rahul@yopmail.com',
                 'business' => 'Desai Home Care',
                 'headline' => 'Electrical, plumbing and appliance work — at your door.',
                 'bio' => 'Licensed technicians covering the western suburbs. Fixed call-out pricing, parts quoted before any work begins.',
@@ -120,7 +120,7 @@ class DemoSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Sana Sheikh', 'email' => 'sana@slotwise.test',
+                'name' => 'Sana Sheikh', 'email' => 'sana@yopmail.com',
                 'business' => 'Sheikh & Frame',
                 'headline' => 'Portrait and event photography with a documentary eye.',
                 'bio' => 'Available light, minimal direction, honest frames. Portfolio work spans weddings, family portraits and small-business product shoots.',
@@ -133,7 +133,7 @@ class DemoSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Vikram Iyer', 'email' => 'vikram@slotwise.test',
+                'name' => 'Vikram Iyer', 'email' => 'vikram@yopmail.com',
                 'business' => 'Iyer Advisory',
                 'headline' => 'Tax and company-structure advice for freelancers.',
                 'bio' => 'Chartered accountant working almost entirely with independent professionals and small studios. Plain-language advice, no jargon.',
@@ -212,11 +212,11 @@ class DemoSeeder extends Seeder
     private function createClients(): array
     {
         $definitions = [
-            ['Ananya Sharma', 'client@slotwise.test'],
-            ['Rohit Menon', 'rohit@slotwise.test'],
-            ['Kavya Reddy', 'kavya@slotwise.test'],
-            ['Imran Qureshi', 'imran@slotwise.test'],
-            ['Neha Bhatt', 'neha@slotwise.test'],
+            ['Ananya Sharma', 'client@yopmail.com'],
+            ['Rohit Menon', 'rohit@yopmail.com'],
+            ['Kavya Reddy', 'kavya@yopmail.com'],
+            ['Imran Qureshi', 'imran@yopmail.com'],
+            ['Neha Bhatt', 'neha@yopmail.com'],
         ];
 
         return collect($definitions)
