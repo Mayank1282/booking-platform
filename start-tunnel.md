@@ -93,6 +93,6 @@ Demo accounts — password `password` for all:
 
 | Role | Email |
 |---|---|
-| Client | client@slotwise.test |
-| Provider | provider@slotwise.test |
-| Admin | admin@slotwise.test |
+| Client | client@yopmail.com |
+| Provider | provider@yopmail.com |
+| Admin | admin@yopmail.com |

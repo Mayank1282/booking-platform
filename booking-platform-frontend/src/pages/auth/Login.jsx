@@ -10,8 +10,8 @@ import { errorMessage, fieldErrors } from '@/lib/api'
 
 /* The seeded accounts, offered as one-tap fills so a reviewer can get in fast. */
 const demoAccounts = [
-  { label: 'Client', email: 'client@slotwise.test' },
-  { label: 'Provider', email: 'provider@slotwise.test' },
+  { label: 'Client', email: 'client@yopmail.com' },
+  { label: 'Provider', email: 'provider@yopmail.com' },
 ]
 
 export default function Login() {

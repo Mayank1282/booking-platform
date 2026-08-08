@@ -109,9 +109,9 @@ Password for all of them: `password`
 
 | Role | Email |
 |---|---|
-| Client | `client@slotwise.test` |
-| Provider | `provider@slotwise.test` |
-| **Admin** | `admin@slotwise.test` |
+| Client | `client@yopmail.com` |
+| Provider | `provider@yopmail.com` |
+| **Admin** | `admin@yopmail.com` |
 
 There is no separate admin URL — sign in as the admin and `/app` becomes the admin console
 (`/app/admin/users`, `/app/admin/services`, `/app/admin/bookings`, `/app/admin/payments`).
