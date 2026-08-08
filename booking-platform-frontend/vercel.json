@@ -2,14 +2,12 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
-      "comment": "Single-page app: React Router owns every path, but only index.html exists on disk. Without this, navigating to /app works while refreshing on /app is a 404 — the browser asks Vercel for a file that was never built. Rewrite (not redirect) so the URL is preserved for the router to read.",
       "source": "/((?!assets/|favicon|mark|icons|robots|.*\\.[a-zA-Z0-9]+$).*)",
       "destination": "/index.html"
     }
   ],
   "headers": [
     {
-      "comment": "Hashed filenames are immutable, so they can be cached hard. index.html must not be, or a deploy leaves users on a stale bundle pointing at assets that no longer exist.",
       "source": "/assets/(.*)",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
     },
