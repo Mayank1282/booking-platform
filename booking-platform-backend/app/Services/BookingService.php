@@ -223,6 +223,33 @@ class BookingService
      */
     private function mail(string $to, \Illuminate\Mail\Mailable $mailable): void
     {
+        /*
+         * Sent after the response has gone back to the browser.
+         *
+         * SMTP costs about 1.5 seconds for the first message — connect, TLS,
+         * auth — and a booking sends two. Doing that inline made the client
+         * wait nearly two seconds on work that has nothing to do with whether
+         * their booking succeeded.
+         *
+         * `afterResponse` needs no queue worker, which matters because the
+         * free tier has nowhere to run one.
+         */
+        dispatch(function () use ($to, $mailable) {
+            try {
+                Mail::to($to)->send($mailable);
+            } catch (\Throwable $e) {
+                Log::warning('Booking mail failed to send', [
+                    'to' => $to,
+                    'mailable' => $mailable::class,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        })->afterResponse();
+    }
+
+    /** Kept for the paths that must know immediately whether mail went out. */
+    private function mailNow(string $to, \Illuminate\Mail\Mailable $mailable): void
+    {
         try {
             Mail::to($to)->send($mailable);
         } catch (\Throwable $e) {
