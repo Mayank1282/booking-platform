@@ -49,6 +49,19 @@ return [
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
+        /*
+         * Brevo over HTTPS (port 443).
+         *
+         * Render blocks outbound SMTP, so port 587 never leaves the container
+         * — locally the same credentials work fine, which makes this look like
+         * a Brevo problem when it is a network one. The API transport carries
+         * the same mail over HTTPS, which is not blocked.
+         */
+        'brevo' => [
+            'transport' => 'brevo',
+            'key' => env('BREVO_API_KEY'),
+        ],
+
         'ses' => [
             'transport' => 'ses',
         ],
