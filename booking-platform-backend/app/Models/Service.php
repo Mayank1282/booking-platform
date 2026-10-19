@@ -155,7 +155,7 @@ class Service extends Model
 
     public function imageUrl(): ?string
     {
-        return $this->image_path ? Storage::disk('public')->url($this->image_path) : null;
+        return $this->image_path ? Storage::disk(config('filesystems.media'))->url($this->image_path) : null;
     }
 
     /** Wall-clock minutes a booking consumes, including the provider's buffer. */

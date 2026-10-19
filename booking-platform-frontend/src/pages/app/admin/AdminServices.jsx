@@ -7,7 +7,7 @@ import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import { Pagination, Rating, SectionTitle } from '@/components/ui/Misc'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States'
-import ServiceArtwork from '@/components/ServiceArtwork'
+import { ServiceImage } from '@/components/ServiceArtwork'
 import { duration, money } from '@/lib/format'
 
 export default function AdminServices() {
@@ -107,11 +107,7 @@ export default function AdminServices() {
               <li key={service.id}>
                 <Card className="flex h-full flex-col overflow-hidden">
                   <div className="relative aspect-[16/9]">
-                    {service.image_url ? (
-                      <img src={service.image_url} alt="" className="size-full object-cover" />
-                    ) : (
-                      <ServiceArtwork service={service} className="size-full" />
-                    )}
+                    <ServiceImage service={service} className="size-full object-cover" artClassName="size-full" />
                     {!service.is_active && (
                       <span className="absolute top-3 right-3">
                         <Badge tone="rose" size="sm">

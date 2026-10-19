@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
 /*
   ============================================================================
@@ -218,5 +218,20 @@ export default function ServiceArtwork({ service, className = '', showTitle = fa
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * The uploaded photo when there is one and it loads, the generated artwork
+ * otherwise. A stored path can outlive its file (a wiped disk, a deleted
+ * object), and a broken-image icon reads worse than no photo at all.
+ */
+export function ServiceImage({ service, src = service?.image_url, className = '', artClassName = className, showTitle = false, loading }) {
+  const [failedSrc, setFailedSrc] = useState(null)
+
+  return src && failedSrc !== src ? (
+    <img src={src} alt="" loading={loading} className={className} onError={() => setFailedSrc(src)} />
+  ) : (
+    <ServiceArtwork service={service} showTitle={showTitle} className={artClassName} />
   )
 }

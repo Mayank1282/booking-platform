@@ -9,7 +9,7 @@ import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States'
 import { Pagination, Rating, SectionTitle } from '@/components/ui/Misc'
-import ServiceArtwork from '@/components/ServiceArtwork'
+import { ServiceImage } from '@/components/ServiceArtwork'
 import { duration, money } from '@/lib/format'
 
 export default function ProviderServices() {
@@ -98,11 +98,7 @@ export default function ProviderServices() {
                 <li key={service.id}>
                   <Card className="flex h-full flex-col overflow-hidden">
                     <div className="relative aspect-[16/9] bg-surface-sunk">
-                      {service.image_url ? (
-                        <img src={service.image_url} alt="" className="size-full object-cover" />
-                      ) : (
-                        <ServiceArtwork service={service} className="size-full" />
-                      )}
+                      <ServiceImage service={service} className="size-full object-cover" artClassName="size-full" />
                       {!service.is_active && (
                         <span className="absolute top-3 right-3">
                           <Badge tone="rose" size="sm">

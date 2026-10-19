@@ -17,6 +17,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Media Disk
+    |--------------------------------------------------------------------------
+    |
+    | Where service images and avatars are stored. "public" is fine locally,
+    | but Render's disk is wiped on every deploy and every free-tier spin-down,
+    | so production must point this at "s3" (Cloudflare R2, Supabase Storage
+    | or AWS S3) or uploads vanish within the hour.
+    |
+    */
+
+    'media' => env('MEDIA_DISK', 'public'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
     |

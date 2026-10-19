@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Star } from 'lucide-react'
 import { initials } from '@/lib/format'
 
@@ -38,10 +39,14 @@ export function Rating({ value = 0, count, size = 14, showCount = true, classNam
 
 /** Avatar with a warm initials fallback. */
 export function Avatar({ name = '', src, size = 40, className = '' }) {
-  return src ? (
+  // Falls back to initials when the file behind the URL is gone.
+  const [failedSrc, setFailedSrc] = useState(null)
+
+  return src && failedSrc !== src ? (
     <img
       src={src}
       alt={name}
+      onError={() => setFailedSrc(src)}
       width={size}
       height={size}
       className={`shrink-0 rounded-full border border-line object-cover ${className}`}

@@ -13,7 +13,7 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States'
 import SlotPicker from '@/components/booking/SlotPicker'
 import PaymentModal from '@/components/booking/PaymentModal'
 import ServiceMap from '@/components/map/ServiceMap'
-import ServiceArtwork from '@/components/ServiceArtwork'
+import { ServiceImage } from '@/components/ServiceArtwork'
 import { dateLong, duration, money, relative, time } from '@/lib/format'
 
 export default function ServiceDetail() {
@@ -146,19 +146,12 @@ export default function ServiceDetail() {
               )}
             </div>
 
-            {service.image_url ? (
-              <img
-                src={service.image_url}
-                alt=""
-                className="mt-8 aspect-[16/9] w-full rounded-[var(--radius-card)] border border-line object-cover"
-              />
-            ) : (
-              <ServiceArtwork
-                service={service}
-                showTitle
-                className="mt-10 aspect-[16/8] w-full rounded-[var(--radius-card)] border border-line"
-              />
-            )}
+            <ServiceImage
+              service={service}
+              showTitle
+              className="mt-8 aspect-[16/9] w-full rounded-[var(--radius-card)] border border-line object-cover"
+              artClassName="mt-10 aspect-[16/8] w-full rounded-[var(--radius-card)] border border-line"
+            />
 
             <div className="mt-10">
               <p className="eyebrow mb-3">About this service</p>

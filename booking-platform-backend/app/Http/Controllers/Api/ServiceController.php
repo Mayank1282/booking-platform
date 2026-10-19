@@ -156,7 +156,7 @@ class ServiceController extends Controller
         $data['currency'] = 'INR';
 
         if ($request->hasFile('image')) {
-            $data['image_path'] = $request->file('image')->store('services', 'public');
+            $data['image_path'] = $request->file('image')->store('services', config('filesystems.media'));
         }
 
         $service = Service::create($data);
@@ -192,9 +192,9 @@ class ServiceController extends Controller
 
         if ($request->hasFile('image')) {
             if ($service->image_path) {
-                Storage::disk('public')->delete($service->image_path);
+                Storage::disk(config('filesystems.media'))->delete($service->image_path);
             }
-            $data['image_path'] = $request->file('image')->store('services', 'public');
+            $data['image_path'] = $request->file('image')->store('services', config('filesystems.media'));
         }
 
         $service->update($data);
@@ -224,7 +224,7 @@ class ServiceController extends Controller
         }
 
         if ($service->image_path) {
-            Storage::disk('public')->delete($service->image_path);
+            Storage::disk(config('filesystems.media'))->delete($service->image_path);
         }
 
         $service->delete();

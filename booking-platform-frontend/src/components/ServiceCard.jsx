@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { ArrowUpRight, Clock, MapPin, Video } from 'lucide-react'
 import { duration, money } from '@/lib/format'
 import { Avatar, Rating } from '@/components/ui/Misc'
-import ServiceArtwork from '@/components/ServiceArtwork'
+import { ServiceImage } from '@/components/ServiceArtwork'
 
 /**
  * Marketplace listing card. Services without a photo get generated
@@ -20,19 +20,11 @@ export default function ServiceCard({ service, className = '' }) {
     >
       <Link to={`/services/${service.slug}`} className="relative block overflow-hidden">
         <div className="relative aspect-[16/10] overflow-hidden">
-          {service.image_url ? (
-            <img
-              src={service.image_url}
-              alt=""
-              loading="lazy"
-              className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-            />
-          ) : (
-            <ServiceArtwork
-              service={service}
-              className="size-full transition-transform duration-500 group-hover:scale-[1.04]"
-            />
-          )}
+          <ServiceImage
+            service={service}
+            loading="lazy"
+            className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+          />
 
           {/* Category and price float over the artwork, so the eye gets the
               two facts that matter before reading anything. Built from theme

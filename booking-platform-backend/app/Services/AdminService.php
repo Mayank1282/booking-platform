@@ -106,11 +106,11 @@ class AdminService
 
             // Uploaded files are not referenced by anything else — remove them.
             if ($user->avatar_path) {
-                Storage::disk('public')->delete($user->avatar_path);
+                Storage::disk(config('filesystems.media'))->delete($user->avatar_path);
             }
 
             foreach ($user->services()->whereNotNull('image_path')->pluck('image_path') as $path) {
-                Storage::disk('public')->delete($path);
+                Storage::disk(config('filesystems.media'))->delete($path);
             }
 
             $releasedEmail = $user->email;

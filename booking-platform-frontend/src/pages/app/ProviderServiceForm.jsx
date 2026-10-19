@@ -45,6 +45,8 @@ export default function ProviderServiceForm() {
   const [errors, setErrors] = useState({})
   const [saving, setSaving] = useState(false)
   const [preview, setPreview] = useState(null)
+  // The saved image URL can point at a file that no longer exists.
+  const [brokenImage, setBrokenImage] = useState(null)
 
   // Set once the service already owes clients an appointment: they booked a
   // specific place, so it cannot move under them.
@@ -394,8 +396,13 @@ export default function ProviderServiceForm() {
               htmlFor="service-image"
               className="block cursor-pointer overflow-hidden rounded-[var(--radius-inner)] border border-dashed border-line-strong bg-surface-sunk transition-colors hover:border-accent"
             >
-              {preview || service?.image_url ? (
-                <img src={preview ?? service.image_url} alt="" className="aspect-[16/9] w-full object-cover" />
+              {preview || (service?.image_url && brokenImage !== service.image_url) ? (
+                <img
+                  src={preview ?? service.image_url}
+                  alt=""
+                  onError={() => !preview && setBrokenImage(service.image_url)}
+                  className="aspect-[16/9] w-full object-cover"
+                />
               ) : (
                 <span className="flex aspect-[16/9] w-full flex-col items-center justify-center gap-2 text-sm text-muted">
                   <ImagePlus size={20} aria-hidden="true" />
