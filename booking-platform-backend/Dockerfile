@@ -4,7 +4,7 @@
 # deliberate rather than nginx + php-fpm: this is a demo on a single free
 # instance, and two processes under a supervisor would be more moving parts to
 # go wrong than the traffic justifies.
-FROM php:8.4-cli
+FROM php:8.4.27-cli
 
 # git and unzip are for Composer; the -dev packages are headers the PHP
 # extensions below need to compile against.
@@ -23,6 +23,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # time. validate_timestamps=0 skips the stat() on each file — safe because the
 # code cannot change without rebuilding the image.
 RUN {       echo 'opcache.enable=1';       echo 'opcache.enable_cli=0';       echo 'opcache.memory_consumption=128';       echo 'opcache.interned_strings_buffer=16';       echo 'opcache.max_accelerated_files=20000';       echo 'opcache.validate_timestamps=0';       echo 'realpath_cache_size=4096K';       echo 'realpath_cache_ttl=600';     } > /usr/local/etc/php/conf.d/opcache.ini
+
+# PHP2Shell (CVE-2026-109618/109619) hardening + hide PHP version header
+RUN echo "session.upload_progress.enabled = Off" > /usr/local/etc/php/conf.d/zz-security.ini \
+ && echo "expose_php = Off" >> /usr/local/etc/php/conf.d/zz-security.ini
+
+# Print PHP version in build logs for verification
+RUN php -v
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
